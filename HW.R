@@ -84,11 +84,16 @@ VNQa <- adjustOHLC(VNQ)
 BNOa <- adjustOHLC(BNO)
 SLVa <- adjustOHLC(SLV)
 
-plot(ClCl(GLDa))
-plot(ClCl(USOa))
-plot(ClCl(VNQa))
-plot(ClCl(BNOa))
-plot(ClCl(SLVa))
+plot(ClCl(GLDa),main = "GLD Price since 2014",
+     xlab = "Amount in Dollars")
+plot(ClCl(USOa),main = "USO Price since 2014",
+     xlab = "Amount in Dollars")
+plot(ClCl(VNQa),main = "VNQ Price since 2014",
+     xlab = "Amount in Dollars")
+plot(ClCl(BNOa),main = "BNO Price since 2014",
+     xlab = "Amount in Dollars")
+plot(ClCl(SLVa),main = "SLV Price since 2014",
+     xlab = "Amount in Dollars")
 
 ###
 
@@ -141,13 +146,23 @@ for (i in 1:5000){
   boot.portfolio3 <- c(boot.portfolio3,sum(holdings))
 }
 
-hist(boot.portfolio1)
-hist(boot.portfolio2)
-hist(boot.portfolio3)
+hist(boot.portfolio1,main = "Portfolio 1 Returns",
+     xlab = "Amount in Dollars")
+hist(boot.portfolio2,main = "Portfolio 2 Returns",
+     xlab = "Amount in Dollars")
+hist(boot.portfolio3,main = "Portfolio 3 Returns",
+     xlab = "Amount in Dollars")
 
 summary(boot.portfolio1)
 summary(boot.portfolio2)
 summary(boot.portfolio3)
+
+hist(boot.portfolio1 - 100000, breaks = 30,main = "Portfolio 1 profit/loss",
+     xlab = "Amount in Dollars")
+hist(boot.portfolio2 - 100000, breaks = 30,main = "Portfolio 2 profit/loss",
+     xlab = "Amount in Dollars")
+hist(boot.portfolio3 - 100000, breaks = 30,main = "Portfolio 3 profit/loss",
+     xlab = "Amount in Dollars")
 
 abs(quantile(boot.portfolio1 - 100000,prob = 0.05))
 abs(quantile(boot.portfolio2 - 100000,prob = 0.05))
