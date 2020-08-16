@@ -84,6 +84,12 @@ VNQa <- adjustOHLC(VNQ)
 BNOa <- adjustOHLC(BNO)
 SLVa <- adjustOHLC(SLV)
 
+plot(ClCl(GLDa))
+plot(ClCl(USOa))
+plot(ClCl(VNQa))
+plot(ClCl(BNOa))
+plot(ClCl(SLVa))
+
 ###
 
 returns <- cbind(ClCl(GLDa),ClCl(USOa),ClCl(VNQa),ClCl(BNOa),ClCl(SLVa))
