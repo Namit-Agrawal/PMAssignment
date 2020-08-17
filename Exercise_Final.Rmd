@@ -6,7 +6,7 @@ output:
   pdf_document: default
 ---
 
-## **Problem 1: Visual story telling: green buildings**
+# **Problem 1: Visual story telling: green buildings**
 ```{r include=FALSE}
 library(mosaic)
 library(ggplot2)
@@ -189,7 +189,7 @@ stories_15_group
 ```
 
 In general, the guru is correct with his analysis, but the analysis is performed on a dataset with a large range of different building specifications.  For example, the dataset only contains 10 green buildings that have 15 stories.  A larger sample size that adheres to the developers desired specs would provide more valid results.
-## **Problem 2: Visual story telling: flights at ABIA**
+# **Problem 2: Visual story telling: flights at ABIA**
 
 **Most active airlines**\
 ```{r include=FALSE}
@@ -418,7 +418,7 @@ ggplot(Diff_Dep_Time, aes(x=reorder(Diff_Category, -Times), y=Times)) +
   theme(plot.title = element_text(hjust = 0.5))
 ```
 
-## **Problem 3: Portfolio modeling**
+# **Problem 3: Portfolio modeling**
 
 **Background**\
 For this problem, we are analyzing five different ETFs ranging from Gold ETFs
@@ -471,7 +471,7 @@ n <- nrow(all.r)
 
 **Portfolios**\
 **Portfolio 1** : A portfolio of equal weights to all ETFs (i.e, 20 percent to all ETFs)
-```{r echo=FALSE}
+```{r echo=FALSE,message=FALSE}
 boot.portfolio1 <- c()
 set.seed(1)
 for (i in 1:5000){
@@ -486,23 +486,23 @@ for (i in 1:5000){
   boot.portfolio1 <- c(boot.portfolio1,sum(holdings))
 }
 
-hist(boot.portfolio1,main = "Portfolio 1 Returns",
-     xlab = "Amount in Dollars")
+return1 <- data.frame(boot.portfolio1-100000)
+colnames(return1) <- "Returns"
+ggplot(return1, aes(x = Returns), 
+       ylab = "Freq") +
+      labs(title = "Portfolio 1") + 
+      geom_histogram(color = "black",fill = "white") + 
+      theme(plot.title = element_text(hjust = 0.5))
 ```
 
 ```{r echo=FALSE}
-hist(boot.portfolio1 - 100000, breaks = 30,main = "Portfolio 1 profit/loss",
-     xlab = "Amount in Dollars")
+print(abs(quantile(return1$Returns,prob = 0.05)))
+print(mean(return1$Returns))
 ```
-
-```{r echo=FALSE}
-print(abs(quantile(boot.portfolio1 - 100000,prob = 0.05)))
-print(mean(boot.portfolio1))
-```
-The 5% value at risk for this particular portfolio is roughly $9,674.\
+The 5% value at risk for this particular portfolio is roughly $9,674.  The average return on the portfolio is a loss of \$392.\
 
 **Portfolio 2** : A portfolio that invests 96 percent of wealth into gold and 1 percent into each of the remaining 4 ETFs.
-```{r echo=FALSE}
+```{r echo=FALSE,message=FALSE}
 boot.portfolio2 <- c()
 set.seed(1)
 for (i in 1:5000){
@@ -516,27 +516,26 @@ for (i in 1:5000){
   }
   boot.portfolio2 <- c(boot.portfolio2,sum(holdings))
 }
+
+return2 <- data.frame(boot.portfolio2-100000)
+colnames(return2) <- "Returns"
+ggplot(return2, aes(x = Returns), 
+       ylab = "Freq") +
+      labs(title = "Portfolio 2") + 
+      geom_histogram(color = "black",fill = "white") + 
+      theme(plot.title = element_text(hjust = 0.5))
 ```
 
 ```{r echo=FALSE}
-hist(boot.portfolio2,main = "Portfolio 2 Returns",
-     xlab = "Amount in Dollars")
+print(abs(quantile(return2$Returns,prob = 0.05)))
+print(mean(return2$Returns))
 ```
-```{r echo=FALSE}
-hist(boot.portfolio2 - 100000, breaks = 30,main = "Portfolio 2 profit/loss",
-     xlab = "Amount in Dollars")
-```
-```{r echo=FALSE}
-print(abs(quantile(boot.portfolio2 - 100000,prob = 0.05)))
-print(mean(boot.portfolio2))
-
-```
-The 5% value at risk for this particular portolio is roughly $5,670.\
+The 5% value at risk for this particular portolio is roughly \$5,670.  The average return on the portfolio is a profit of \$491.\
 
 
 **Portfolio 3** : A portfolio that invests 60 percent of wealth into VNQ and 10 percent into each of the remaining 4 ETFs.
 
-```{r echo=FALSE}
+```{r, echo=FALSE,message=FALSE}
 boot.portfolio3 <- c()
 set.seed(1)
 for (i in 1:5000){
@@ -550,21 +549,22 @@ for (i in 1:5000){
   }
   boot.portfolio3 <- c(boot.portfolio3,sum(holdings))
 }
-```
-```{r echo=FALSE}
-hist(boot.portfolio3,main = "Portfolio 3 Returns",
-     xlab = "Amount in Dollars")
-```
-```{r echo=FALSE}
-hist(boot.portfolio3 - 100000, breaks = 30,main = "Portfolio 3 profit/loss",
-     xlab = "Amount in Dollars")
-```
-```{r echo=FALSE}
-print(abs(quantile(boot.portfolio3 - 100000,prob = 0.05)))
-print(mean(boot.portfolio3))
+
+return3 <- data.frame(boot.portfolio3-100000)
+colnames(return3) <- "Returns"
+ggplot(return3, aes(x = Returns), 
+       ylab = "Freq") +
+      labs(title = "Portfolio 3") + 
+      geom_histogram(color = "black",fill = "white") + 
+      theme(plot.title = element_text(hjust = 0.5))
 
 ```
-The 5% value at risk of this particular portfolio is roughly $7,695.\
+
+```{r echo=FALSE}
+print(abs(quantile(return3$Returns,prob = 0.05)))
+print(mean(return3$Returns))
+```
+The 5% value at risk of this particular portfolio is roughly \$7,695.  The average return on this portfolio is a profit of \$226.\
 
 **Report**\
 Based on our analysis, portfolio 2 performed the best. By investing 96% of our wealth into the gold ETF, we were able to achieve the highest returns and the lowest VaR (value at risk) at 5% between all portfolios. This is an interesting result as diversification of the 
@@ -602,27 +602,27 @@ ggplot(sorted, aes(x=reorder(Category,PC3), y=PC3)) +
   geom_bar(stat='identity') + coord_flip()
 ```
 In contrast, our fourth PC (below) has strong negative weights for health and fitness and seems to value online gaming and sports.
-```{r}
+```{r, echo = FALSE, fig.align = "center",fig.width = 6,fig.height = 4}
 gamer <- select(loadings,Category,PC4)
 sorted <- arrange(gamer,desc(PC4))
 ggplot(sorted, aes(x=reorder(Category,PC4), y=PC4)) +
   geom_bar(stat='identity') + coord_flip()
 ```
 These two PCs, then would be good at separating and visualizing different types of followers in a 2-Dimensional space.
-```{r}
+```{r, echo = FALSE,fig.align = "center",fig.width = 6,fig.height = 4}
 scaled.pca <- as.data.frame(pca.social$x[,1:15])
 scaled.points <- select(scaled.pca,PC3,PC4)
 ggplot(scaled.points,aes(PC3,PC4)) + 
   geom_point()
 ```
 In order to determine clusters of followers in this space, we perform kmeans clustering on our points in PC space. To determine the optimal hyperparameter for clustering, we try several values of *k* and measure the best one using our within sum of squares as the metric.  
-```{r, warning=F}
+```{r,echo = FALSE, warning=F}
 scaled <- as.data.frame(scale(social[,-c(1)],center = T,scale = T))
 mu <- attr(scale(social[,-c(1)]), "scaled:center")
 sigma <- attr(scale(social[,-c(1)]),"scaled:scale")
 ```
 Based on the plot, we decided to choose $k=7$.  We can now visualize the different clusters in the 2D PC space we chose earlier.  There seems to be a clear separation between clusters - those with a higher positive value for PC3 but low positive value for PC4 are individuals who love fitness (cluster 5).  Those who (we suspect) are college students are going to be in the positive PC4 range with negative PC3 values (cluster 4).
-```{r}
+```{r,echo = FALSE,fig.align = "center",fig.width = 6,fig.height = 4}
 set.seed(1)
 cluster <- kmeans(scaled, 7, nstart=25)
 scaled.points$cols <- cluster$cluster
@@ -631,16 +631,16 @@ qplot(PC3,PC4,data = scaled.points,color = factor(cols)) +
   geom_point()
 ```
 A closer examination of the clusters as determined by kmeans gives us a better picture for what type of followers are within this group.
-```{r}
+```{r, echo = FALSE,fig.align = "center",fig.width = 6,fig.height = 4}
 clust4 <- as.data.frame(sort((cluster$center[4,]*sigma + mu), decreasing=TRUE))
 clust4$category <- rownames(clust4)
 clust5 <- as.data.frame(sort((cluster$center[5,]*sigma + mu), decreasing=TRUE))
 clust5$category <- rownames(clust5)
 kmeansDF <- merge(clust4,clust5, by = "category")
 colnames(kmeansDF)<- c("category","Cluster_4","Cluster_5")
-ggplot(kmeansDF, aes(x=reorder(category,Cluster_4), y=Cluster_4)) +
+ggplot(kmeansDF, aes(x=reorder(category,Cluster_4), y=Cluster_4), ylab = "Category",xlab = "Cluster 4") +
   geom_bar(stat='identity') + coord_flip()
-ggplot(kmeansDF, aes(x=reorder(category,Cluster_5), y=Cluster_5)) +
+ggplot(kmeansDF, aes(x=reorder(category,Cluster_5), y=Cluster_5), ylab = "Category",xlab = "Cluster 5") +
   geom_bar(stat='identity') + coord_flip()
 ```
 
@@ -648,7 +648,9 @@ ggplot(kmeansDF, aes(x=reorder(category,Cluster_5), y=Cluster_5)) +
 ## add stuff later
 
 
-**Problem 5: 
+**Problem 5: Author Attribution**\
+
+Using the ReutersC50 dataset, we hope to predict the author that wrote a particular article based on the article's textual content.  
 
 
 

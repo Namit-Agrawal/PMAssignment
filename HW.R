@@ -308,7 +308,7 @@ my_documents <- tm_map(my_documents, content_transformer(removeWords), stopwords
 DTM_train <- DocumentTermMatrix(my_documents)
 inspect(DTM_train[1:10,1:20])
 
-DTM_train <- removeSparseTerms(DTM_train, 0.95)
+DTM_train <- removeSparseTerms(DTM_train, 0.98)
 tfidf_train = weightTfIdf(DTM_train)
 
 # TEST SET
@@ -341,7 +341,7 @@ my_documents2 <- tm_map(my_documents2, content_transformer(removeWords), stopwor
 DTM_test <- DocumentTermMatrix(my_documents2)
 inspect(DTM_test[1:10,1:20])
 
-DTM_test <- removeSparseTerms(DTM_test, 0.95)
+DTM_test <- removeSparseTerms(DTM_test, 0.98)
 tfidf_test <- weightTfIdf(DTM_test)
 
 # FILTER
@@ -370,55 +370,93 @@ X_train <- X_train[,match]
 pca.x <- prcomp(X_train,scale=T)
 plot(summary(pca.x)$importance[3,])
 
-train <- pca.x$x[,1:400]
-test <- predict(pca.x,newdata = X_test)[,1:400]
+train <- pca.x$x[,1:500]
+test <- predict(pca.x,newdata = X_test)[,1:500]
 
 # PREDICTION
 
 train <- as.data.frame(cbind(author,train))
 test <- as.data.frame(cbind(author2,test))
-colnames(test)[length(test)] <- "author"
+
+# Random forest
 
 library(randomForest)
 
 set.seed(1)
-rf <- randomForest(as.factor(author)~.,data = train,importance = T,mtry = 5,ntree =100)
+rf <- randomForest(as.factor(author)~.,data = train,importance = T,mtry = 20,ntree =500)
 
 preds <- predict(rf,newdata = test)
 tab <- table(preds,as.factor(test$author))
-totalsum <- 0
-for (i in 1:dim(tab)[1]){
-  totalsum <- totalsum + tab[i,i]
-}
+accuracy <- mean(preds==as.factor(author))
+accuracy
+
 
 
 
 # KNN
 
-library(kknn)
-
-tr <- train
-t <- test
-
-knn <- kknn(as.factor(author)~.,train = tr, test = t, k = 50)
+library(class)
 
 
+knn <- knn(train[,-c(1)],test[,-c(1)],cl = factor(train$author), k = 1)
+
+tab <- table(knn,factor(test$author2))
+mean(knn == factor(test$author2))
 
 
-# Boosting
+#############################################################
 
-#library(gbm)
+library(arules)
+library(arulesViz)
+grocery <- read.delim("groceries.txt",sep = "\n",header = F)
 
-#boosted <- gbm(as.factor(author)~.,data = train)
+baskets <- c()
+for (i in 1:length(rownames(grocery))){
+  current <- strsplit(grocery[i,],split = ",")
+  baskets <- c(baskets,current)
+}
+
+length(baskets)
+
+baskets.trans <- as(baskets,"transactions")
+summary(baskets.trans)
+
+# we want to ensure that there is at least 50% confidence that the rule is correct
+
+# Baseline
+basket.rules3 <- apriori(baskets.trans, parameter=list(support=.001, confidence=.1, maxlen=3))
+arules::inspect(subset(basket.rules3, subset=lift > 1))
+
+# 1
+basket.rules <- apriori(baskets.trans, parameter=list(support=.05, confidence=.3, maxlen=3))
+arules::inspect(subset(basket.rules, subset=lift > 1))
+
+# 2
+basket.rules <- apriori(baskets.trans, parameter=list(support=.02, confidence=.3, maxlen=3))
+arules::inspect(subset(basket.rules, subset=lift > 1)[1:10])
+
+# 3
+basket.rules <- apriori(baskets.trans, parameter=list(support=.02, confidence=.3, maxlen=3))
+arules::inspect(subset(basket.rules, subset=lift > 2))
+
+# 4
+basket.rules <- apriori(baskets.trans, parameter=list(support=.01, confidence=.3, maxlen=4))
+arules::inspect(subset(basket.rules, subset=lift > 2))
+
+# 5
+basket.rules <- apriori(baskets.trans, parameter=list(support=.005, confidence=.01, maxlen=3))
+arules::inspect(subset(basket.rules, subset=lift < 1)[76:77])
+
+
+
+# choose #4
+
+data <- subset(basket.rules, subset=lift > 2)
 
 
 
 
 
-
-
-
-
-
+plot(basket.rules,method = "two-key plot")
 
 
