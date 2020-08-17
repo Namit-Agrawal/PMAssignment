@@ -5,7 +5,7 @@ date: "08/16/20"
 output:
   pdf_document: default
 ---
-
+Note: Much of the analysis below was inspired by various R files written by Professor James Scott.  
 # **Problem 1: Visual story telling: green buildings**
 ```{r include=FALSE}
 library(mosaic)
@@ -188,7 +188,8 @@ stories_15_group = greenBuilding9015 %>%
 stories_15_group
 ```
 
-In general, the guru is correct with his analysis, but the analysis is performed on a dataset with a large range of different building specifications.  For example, the dataset only contains 10 green buildings that have 15 stories.  A larger sample size that adheres to the developers desired specs would provide more valid results.
+In general, the guru is correct with his analysis, but the analysis is performed on a dataset with a large range of different building specifications.  For example, the dataset only contains 10 green buildings that have 15 stories.  A larger sample size that adheres to the developers desired specs would provide more valid results.\
+
 # **Problem 2: Visual story telling: flights at ABIA**
 
 **Most active airlines**\
@@ -242,7 +243,7 @@ There are more arrival delays than departure delays and Friday is the worst day 
 ```{r echo=FALSE, fig.align = "center",fig.width = 6,fig.height = 4}
 ggplot(delay_sum, aes(x=DayOfWeek, y=value, fill=variable )) + 
   geom_bar(stat='identity', position='dodge') +
-  labs(title="departure and arrival delay for each day of week", 
+  labs(title="Departure and arrival delay for each day of week", 
        y="Total Delay Time",
        x = "Day Of the Week (1 = Monday)",
        fill="Delay")+
@@ -385,7 +386,7 @@ ggplot(Avg_Time_By_Carrier, aes(x=UniqueCarrier, y=Avg_Time)) +
   theme(plot.title = element_text(hjust = 0.5))
 ```
 
-**Average deviation off of Schedule Departure Time**\
+**Actual minus Scheduled Departure Times**\
 ```{r include=FALSE}
 Avg_Time_By_Carrier = abia_austin_Dep %>%
   group_by(UniqueCarrier)  %>%  
@@ -422,7 +423,7 @@ ggplot(Diff_Dep_Time, aes(x=reorder(Diff_Category, -Times), y=Times)) +
 
 **Background**\
 For this problem, we are analyzing five different ETFs ranging from Gold ETFs
-to Oil related ETFs.\
+to Oil related ETFs.  We chose these ETFs because we wanted to explore a diverse set of ETFs based on volatility.\
 
 We have chosen to go with 5 ETFs: \
 “GLD” - The Fund seeks to achieve the performance of gold bullion less the expenses of the Fund\
@@ -471,7 +472,7 @@ n <- nrow(all.r)
 
 **Portfolios**\
 **Portfolio 1** : A portfolio of equal weights to all ETFs (i.e, 20 percent to all ETFs)
-```{r echo=FALSE,message=FALSE}
+```{r echo=FALSE,message=FALSE,fig.align = "center",fig.width = 5,fig.height = 3}
 boot.portfolio1 <- c()
 set.seed(1)
 for (i in 1:5000){
@@ -502,7 +503,7 @@ print(mean(return1$Returns))
 The 5% value at risk for this particular portfolio is roughly $9,674.  The average return on the portfolio is a loss of \$392.\
 
 **Portfolio 2** : A portfolio that invests 96 percent of wealth into gold and 1 percent into each of the remaining 4 ETFs.
-```{r echo=FALSE,message=FALSE}
+```{r echo=FALSE,message=FALSE,fig.align = "center",fig.width = 5,fig.height = 3}
 boot.portfolio2 <- c()
 set.seed(1)
 for (i in 1:5000){
@@ -535,7 +536,7 @@ The 5% value at risk for this particular portolio is roughly \$5,670.  The avera
 
 **Portfolio 3** : A portfolio that invests 60 percent of wealth into VNQ and 10 percent into each of the remaining 4 ETFs.
 
-```{r, echo=FALSE,message=FALSE}
+```{r, echo=FALSE,message=FALSE,fig.align = "center",fig.width = 5,fig.height = 3}
 boot.portfolio3 <- c()
 set.seed(1)
 for (i in 1:5000){
@@ -599,14 +600,16 @@ Based on our understanding of the dataset, we can conclude which PCs are associa
 fit <- select(loadings,Category,PC3)
 sorted <- arrange(fit,desc(PC3))
 ggplot(sorted, aes(x=reorder(Category,PC3), y=PC3)) +
-  geom_bar(stat='identity') + coord_flip()
+  geom_bar(stat='identity') + coord_flip() +
+  ylab("Category")
 ```
 In contrast, our fourth PC (below) has strong negative weights for health and fitness and seems to value online gaming and sports.
 ```{r, echo = FALSE, fig.align = "center",fig.width = 6,fig.height = 4}
 gamer <- select(loadings,Category,PC4)
 sorted <- arrange(gamer,desc(PC4))
 ggplot(sorted, aes(x=reorder(Category,PC4), y=PC4)) +
-  geom_bar(stat='identity') + coord_flip()
+  geom_bar(stat='identity') + coord_flip() + 
+  ylab("Category")
 ```
 These two PCs, then would be good at separating and visualizing different types of followers in a 2-Dimensional space.
 ```{r, echo = FALSE,fig.align = "center",fig.width = 6,fig.height = 4}
@@ -621,6 +624,17 @@ scaled <- as.data.frame(scale(social[,-c(1)],center = T,scale = T))
 mu <- attr(scale(social[,-c(1)]), "scaled:center")
 sigma <- attr(scale(social[,-c(1)]),"scaled:scale")
 ```
+
+```{r,echo = FALSE,fig.align = "center", warning=FALSE}
+withinss = c()
+seed <- c()
+for(k in 2:20){
+  set.seed(1)
+  cluster_k = kmeans(scaled, k, nstart=25)
+  withinss= c(withinss, cluster_k$tot.withinss)
+}
+qplot(seq_along(withinss),withinss,xlab = "k")
+```
 Based on the plot, we decided to choose $k=7$.  We can now visualize the different clusters in the 2D PC space we chose earlier.  There seems to be a clear separation between clusters - those with a higher positive value for PC3 but low positive value for PC4 are individuals who love fitness (cluster 5).  Those who (we suspect) are college students are going to be in the positive PC4 range with negative PC3 values (cluster 4).
 ```{r,echo = FALSE,fig.align = "center",fig.width = 6,fig.height = 4}
 set.seed(1)
@@ -632,38 +646,46 @@ qplot(PC3,PC4,data = scaled.points,color = factor(cols)) +
 ```
 A closer examination of the clusters as determined by kmeans gives us a better picture for what type of followers are within this group.
 ```{r, echo = FALSE,fig.align = "center",fig.width = 6,fig.height = 4}
-clust4 <- as.data.frame(sort((cluster$center[4,]*sigma + mu), decreasing=TRUE))
-clust4$category <- rownames(clust4)
+clust3 <- as.data.frame(sort((cluster$center[3,]*sigma + mu), decreasing=TRUE))
+clust3$category <- rownames(clust3)
 clust5 <- as.data.frame(sort((cluster$center[5,]*sigma + mu), decreasing=TRUE))
 clust5$category <- rownames(clust5)
-kmeansDF <- merge(clust4,clust5, by = "category")
-colnames(kmeansDF)<- c("category","Cluster_4","Cluster_5")
-ggplot(kmeansDF, aes(x=reorder(category,Cluster_4), y=Cluster_4), ylab = "Category",xlab = "Cluster 4") +
-  geom_bar(stat='identity') + coord_flip()
-ggplot(kmeansDF, aes(x=reorder(category,Cluster_5), y=Cluster_5), ylab = "Category",xlab = "Cluster 5") +
-  geom_bar(stat='identity') + coord_flip()
+kmeansDF <- merge(clust3,clust5, by = "category")
+colnames(kmeansDF)<- c("category","Cluster_3","Cluster_5")
+ggplot(kmeansDF, aes(x=reorder(category,Cluster_3), y=Cluster_3)) +
+  geom_bar(stat='identity') + coord_flip() + 
+  ylab("Category") + xlab("Cluster 3")
+ggplot(kmeansDF, aes(x=reorder(category,Cluster_5), y=Cluster_5)) +
+  geom_bar(stat='identity') + coord_flip() +
+  ylab("Category") + xlab("Cluster 5")
 ```
-
-
-## add stuff later
 
 
 **Problem 5: Author Attribution**\
 
-Using the ReutersC50 dataset, we hope to predict the author that wrote a particular article based on the article's textual content.  
+Using the ReutersC50 dataset, we hoped to fit models that could predict the author of a particular article based on the article's textual content alone.  \
+
+**Data Pre-Processing**\
+
+We first needed to ensure that the test and training datasets had the appropriate format. The datasets need to be formatted into count matrices, where each $i,j$ entry represents the number of $j$ words that the $i^{th}$ document contains (using DocumentTermMatrix function from the "tm" package in R). \
 
 
+Using several pre-processing techniques found in the "tm" package, we convert each word within each article into lower case.  We also strip each word of numbers, punctuation, and whitespaces, before then creating the data matrices.\
 
+Since both the training and testing data matrices are sparse, we filter out terms that have more than 98% sparse terms (0's).  We choose this filter as it preserves words that specific authors  use, which would benefit our predictions.  We use the removeSparseTerms function from the "tm" package in R.\
+
+Given the filtered dataset, we then convert each $i,j$ entry into a TF-IDF score using the weightTfIdf function in the "tm" package.\
+
+In addition, we keep track of which document belongs to which author by creating an additional vector (for both the test and train datasets) where the $i^{th}$ element of the list is the author of document $i$.\
+```{r ,message = FALSE,include = FALSE}
 setwd("C:/Users/timot/Documents/GitHub/PMAssignment/")
 library(tidyverse)
 library(tm)
 library(slam)
 library(proxy)
-
 readerPlain = function(fname){
   readPlain(elem=list(content=readLines(fname)), 
             id=fname, language='en') }
-
 
 file_list <- Sys.glob("ReutersC50/C50train/*")
 
@@ -691,13 +713,16 @@ my_documents <- documents_raw %>%
 my_documents <- tm_map(my_documents, content_transformer(removeWords), stopwords("en"))
 
 DTM_train <- DocumentTermMatrix(my_documents)
-inspect(DTM_train[1:10,1:20])
-
-DTM_train <- removeSparseTerms(DTM_train, 0.95)
+tm::inspect(DTM_train[1:5,1:5])
+DTM_train <- removeSparseTerms(DTM_train, 0.98)
 tfidf_train = weightTfIdf(DTM_train)
+```
+Below is a sample of our training dataset:
+```{r echo = FALSE}
+tm::inspect(tfidf_train[1:5,1:5])
+```
 
-# TEST SET
-
+```{r echo = FALSE}
 file_list2 <- Sys.glob("ReutersC50/C50test/*")
 
 total2 <- c()
@@ -724,13 +749,13 @@ my_documents2 <- documents_raw2 %>%
 my_documents2 <- tm_map(my_documents2, content_transformer(removeWords), stopwords("en"))
 
 DTM_test <- DocumentTermMatrix(my_documents2)
-inspect(DTM_test[1:10,1:20])
+tm::inspect(DTM_test[1:5,1:5])
 
-DTM_test <- removeSparseTerms(DTM_test, 0.95)
+DTM_test <- removeSparseTerms(DTM_test, 0.98)
 tfidf_test <- weightTfIdf(DTM_test)
-
-# FILTER
-
+```
+We then filter words that are uninformative and appear in every document (i.e. all entries are 0).
+```{r echo = FALSE}
 X_train <- as.matrix(tfidf_train)
 scrub <- which(colSums(X_train) == 0)
 X_train <- X_train[,-scrub]
@@ -739,59 +764,127 @@ X_test <- as.matrix(tfidf_test)
 scrub2 <- which(colSums(X_test) == 0)
 X_test <- X_test[,-scrub2]
 
-
-# MATCH
-
 train.cols <- colnames(X_train)
 test.cols <- colnames(X_test)
-
+```
+Due to our filtering preference, we found that the words (features) between the training dataset and testing dataset matched up perfectly.  Because of this, no other steps were needed to fix the features between the datasets.\
+```{r echo = F}
 match <- intersect(train.cols,test.cols)
 X_test <- X_test[,match]
 X_train <- X_train[,match]
+```
 
+**Dimension Reduction**\
 
-# DIMENSION REDUCTION
-
+We then perform PCA on our training dataset.  To ensure the principal components between both the training and testing dataset are equivalent, we project the observations of the test set into the PC space as defined by our training dataset.  We choose the first 500 PCs to improve computational speed.
+```{r echo = FALSE,fig.align = "center",fig.width = 6,fig.height = 4}
 pca.x <- prcomp(X_train,scale=T)
-plot(summary(pca.x)$importance[3,])
+qplot(seq_along(summary(pca.x)$importance[3,]),summary(pca.x)$importance[3,],xlab = "PC",ylab = "Cumulative Variance Explained")
 
-train <- pca.x$x[,1:400]
-test <- predict(pca.x,newdata = X_test)[,1:400]
+train <- pca.x$x[,1:500]
+test <- predict(pca.x,newdata = X_test)[,1:500]
+```
 
-# PREDICTION
+**Prediction**\
 
+We use the random forest and k-Nearest Neighbor algorithms to determine a model for prediction.\
+
+In random forest, we chose several hyperparameters that could balance between bias and variance, while trying to account for computational speed.  We designated a subset of 20 variables for each split, and we grew 500 trees.
+```{r echo = FALSE}
 train <- as.data.frame(cbind(author,train))
 test <- as.data.frame(cbind(author2,test))
-colnames(test)[length(test)] <- "author"
 
 library(randomForest)
 
 set.seed(1)
-rf <- randomForest(as.factor(author)~.,data = train,importance = T,mtry = 5,ntree =100)
+rf <- randomForest(as.factor(author)~.,data = train,importance = T,mtry = 20,ntree =500)
 
 preds <- predict(rf,newdata = test)
-tab <- table(preds,as.factor(test$author))
-totalsum <- 0
-for (i in 1:dim(tab)[1]){
-  totalsum <- totalsum + tab[i,i]
+accuracy <- mean(preds==as.factor(author))
+accuracy
+```
+Using a the algorithm, we were able to achieve a roughly 53% accuracy on our dataset.\
+
+We then fit a k-Nearest Neighbors model on our training dataset, and chose to use $k = 50$.
+
+```{r echo = FALSE,fig.align = "center",fig.width = 6,fig.height = 4}
+library(class)
+set.seed(1)
+accuracy <- c()
+for (i in seq(1,50, by = 5)){
+  knn <- knn(train[,-c(1)],test[,-c(1)],cl = factor(train$author), k = i)
+  accuracy <- c(accuracy,mean(knn == factor(test$author2)))
 }
 
+qplot(seq(1,50, by = 5),accuracy,xlab = "k",geom = c("point","line"))
+```
+In this situation, $k=2$ provided the best accuracy.  In general, our random forest model performed the best.  
+
+**Problem 6: Association Rule Mining**\
+In this problem, we wanted to find association rules within a dataset containing baskets of grocery shoppers.  We first take the necessary data pre-processing steps to read in the data, as well as format it in a way that allows the "arules" package in R to work.  Below is a summary of the resulting object from the class "transactions" (also within the "arules" package).\
+
+In our dataset, we can see that whole milk is purchased in roughly 25% of the baskets.\
+```{r, echo = FALSE}
+library(arules)
+library(arulesViz)
+grocery <- read.delim("groceries.txt",sep = "\n",header = F)
+
+baskets <- c()
+for (i in 1:length(rownames(grocery))){
+  current <- strsplit(grocery[i,],split = ",")
+  baskets <- c(baskets,current)
+}
+baskets.trans <- as(baskets,"transactions")
+summary(baskets.trans)
+```
+
+We tested several thresholds for both confidence and lift.  In general, what we were looking for were rules that had a high number of counts (in terms of the left-hand side of the rule) and high confidence as well as lift.  \
+
+Below is a small sample of our baseline list of rules.  We choose a confidence of 0.1 and a lift of 1.  We choose a max length of 3 in order to find more general rules, instead of finding rules with larger lengths that may not occur as often.  In total, there are 18597 rules.  In addition, from the graph, we can see 
+```{r echo = FALSE,fig.align = "center",fig.width = 6,fig.height = 4}
+basket.rules <- apriori(baskets.trans, parameter=list(support=.001, confidence=.1, maxlen=3))
+sub <- subset(basket.rules, subset=lift > 1)
+arules::inspect(sub)[1:20,]
+plot(head(basket.rules, 20, by='lift'), method='graph')
+```
+
+By increasing the confidence (as well as reducing the minimum support required), we can see a drastic decrease in the number of rules in our list.  These rules are generally good, because they have high count and have a good level of confidence.
+
+```{r echo = FALSE,fig.align = "center",fig.width = 6,fig.height = 4}
+basket.rules2 <- apriori(baskets.trans, parameter=list(support=.05, confidence=.3, maxlen=3))
+sub <- subset(basket.rules2, subset=lift > 1)
+arules::inspect(sub)
+plot(head(sub, 20, by='lift'), method='graph')
+```
+
+By decreasing the required minimum support again, we can achieve a slightly larger list (size 37) of rules.  However, in general, the counts for each rule is low (around 200 each rule).\
+
+Using the same rules, we can filter out the items that have a high value for lift.  In general, since lift is high, it implies that the items on either side of the rule are not independent from one another (i.e. they are complementary).  An interesting rule to note on this list is the second rule - the count is high and the confidence is good.  It also makes sense - typically, when a shopper is buying vegetables, they probably won't just stop at root vegetables.  
+```{r echo = FALSE,fig.align = "center",fig.width = 6,fig.height = 4}
+basket.rules3 <- apriori(baskets.trans, parameter=list(support=.02, confidence=.3, maxlen=3))
+sub <- subset(basket.rules3, subset=lift > 2)
+arules::inspect(sub)
+plot(head(sub, 20, by='lift'), method='graph')
+
+```
+
+We then reduced the minimum required support even further and increased the maximum length of each rule.  In general, most of these rules are good (if we disregard the low count).  They all have lifts greater than 2, which is indicative of their possible non-independence. 
+```{r echo = FALSE,fig.align = "center",fig.width = 6,fig.height = 4}
+basket.rules4 <- apriori(baskets.trans, parameter=list(support=.01, confidence=.3, maxlen=4))
+sub <- subset(basket.rules4, subset=lift > 2)
+arules::inspect(sub)
+plot(head(sub, 20, by='lift'), method='graph')
+```
+
+We then looked for substitute items.  After reducing support and maximum length slightly, we found an interesting set of rules that depicted this.  In general, we believe that it's safe to assume that most people who go shopping are not there to buy shopping bags, but rather are there to buy whole milk.\
+```{r echo = FALSE}
+basket.rules5 <- apriori(baskets.trans, parameter=list(support=.005, confidence=.01, maxlen=3))
+arules::inspect(subset(basket.rules5, subset=lift < 1)[76:77])
+```
+
+plot(head(data, 5, by='lift'), method='graph')
+
+In general, most of the rules make sense.  Root vegetables aren't going to be the only vegetables you buy, you'll probably buy other vegetables.  If you're getting yogurt, you're going to be in the dairy section, so you'll probably pick up some milk too.  And finally, if you're going to make a sandwich, you'll probably need both white bread and ham. \
 
 
-# KNN
 
-library(kknn)
-
-tr <- train
-t <- test
-
-knn <- kknn(as.factor(author)~.,train = tr, test = t, k = 50)
-
-
-
-
-# Boosting
-
-#library(gbm)
-
-#boosted <- gbm(as.factor(author)~.,data = train)
