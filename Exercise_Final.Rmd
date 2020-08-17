@@ -27,26 +27,153 @@ greenBuild$amenities = as.factor(greenBuild$amenities)
 attach(greenBuild)
 ```
 
-```{r}
-ggplot(data=greenBuild) + 
-  geom_point(mapping=aes(x=renovated, y=Rent, colour=green_rating)) +
-  labs(x="Renovated", y='Rent', title = 'Green buildings: Cluster rent VS Rent',
-       color='Green building')
+It does make sense to use the median rather than mean as the non-green buildings
+have many outliers as suggested by the boxplot below
+```{r echo=FALSE, fig.align='center'}
+ggplot(greenBuild, aes(x=green_rating, y=Rent)) + 
+  geom_boxplot()
+```
 
-ggplot(data=greenBuild) + 
+
+The excel guru is right about removing buildings with less than 10%  occupancy
+as based on the summary below, it looks like there is only 1 green building to consider
+, very few class a buildings and half the building have only 3 stories hence
+we should remove buildings with less than 10% occupancy as it may distort the analysis.
+```{r echo=FALSE}
+summary(subset(greenBuild, leasing_rate<10))
+```
+
+The median rent for green buildings and non-green buildings is correct if buildings
+with more than 10% occupancy rate are considered 
+```{r echo=FALSE}
+greenBuild90 = subset(greenBuild, leasing_rate>=10)
+medianRent = greenBuild90 %>% 
+  group_by(green_rating)  %>%  
+  summarize(MedianRent = median(Rent, na.rm = TRUE)) 
+medianRent
+```
+
+
+**Confounding variables investigation**\
+Based on the numerical summary analysis for buildings that are renovated,
+it does not seem there is much confounding going on as the median rents 
+for non renovated and renovated buildings are similar especially for green buildings
+
+```{r echo=FALSE}
+renovated_group = greenBuild90 %>%
+  group_by(renovated, green_rating)  %>%  
+  summarize(MedianRent = median(Rent, na.rm = TRUE)) 
+renovated_group
+```
+
+```{r echo=FALSE}
+renovated_group_rent = greenBuild90 %>%
+  group_by(renovated)  %>%  
+  summarize(MedianRent = median(Rent, na.rm = TRUE)) 
+renovated_group_rent
+```
+
+Use median for stories since there are some outliers as suggested by the plot below.
+It looks there is not much evidence for confounding going on with stories even though there is slight increase in rent as the number of stories goes up. The median for stories
+for green building is only 1 higher so stories may not directly be affecting the rent.
+```{r echo=FALSE}
+stories_group = greenBuild90 %>%
+  group_by(green_rating)  %>%  
+  summarize(MedianStories = median(stories, na.rm = TRUE)) 
+stories_group
+```
+
+
+```{r echo=FALSE}
+ggplot(data=greenBuild90) + 
   geom_point(mapping=aes(x=stories, y=Rent, colour=green_rating)) +
-  labs(x="Stories", y='Rent', title = 'Green buildings: Cluster rent VS Rent',
+  labs(x="Stories", y='Rent', title = 'Green buildings: Stories VS Rent',
        color='Green building')
+```
 
-ggplot(data=greenBuild) + 
+
+```{r echo=FALSE}
+age_group = greenBuild90 %>%
+  group_by(green_rating)  %>%  
+  summarize(MedianAge = median(age, na.rm = TRUE)) 
+age_group
+```
+
+It looks like there is no confounding for age as there is no correlation between
+the age of the building and the rent from the plot below.
+```{r echo=FALSE}
+ggplot(data=greenBuild90) + 
   geom_point(mapping=aes(x=age, y=Rent, colour=green_rating)) +
-  labs(x="Age", y='Rent', title = 'Green buildings: Cluster rent VS Rent',
+  labs(x="Age", y='Rent', title = 'Green buildings: Age VS Rent',
        color='Green building')
+```
 
-ggplot(data=greenBuild) + 
+It looks like size is definitely a confounding variable as size is correlated 
+with rent from plot below and the median size is double for green buildings versus non green. Thus, there is a premium for size when it comes to rent as expected.
+```{r echo=FALSE}
+size_group = greenBuild90 %>%
+  group_by(green_rating)  %>%  
+  summarize(MedianSize = median(size, na.rm = TRUE)) 
+size_group
+```
+
+
+```{r echo=FALSE}
+ggplot(data=greenBuild90) + 
   geom_point(mapping=aes(x=size, y=Rent, colour=green_rating)) +
-  labs(x="Size", y='Rent', title = 'Green buildings: Cluster rent VS Rent',
+  labs(x="Size", y='Rent', title = 'Green buildings: size VS Rent',
        color='Green building')
+```
+There does not seem to be confounding for cluster rent as the median for cluster 
+rent is the same regardless if its green or not, however cluster rent is highly
+correlated with rent
+```{r echo=FALSE}
+cluster_rent_group = greenBuild90 %>%
+  group_by(green_rating)  %>%  
+  summarize(MedianClusterRent = median(cluster_rent, na.rm = TRUE)) 
+cluster_rent_group
+```
+
+```{r echo=FALSE}
+ggplot(data=greenBuild90) + 
+  geom_point(mapping=aes(x=cluster_rent, y=Rent, colour=green_rating)) +
+  labs(x="Cluster Rent", y='Rent', title = 'Green buildings: Cluster rent VS Rent',
+       color='Green building')
+```
+
+It looks like class a buildings are a confounding variable as class a buildings
+correlate with green_rating and class a buildings correlate with overall rent as
+well.
+```{r echo=FALSE}
+classa_group= greenBuild90 %>%
+  group_by(class_a, green_rating)  %>%  
+  summarize(MedianRent = median(Rent, na.rm = TRUE)) 
+classa_group
+```
+
+```{r echo=FALSE}
+classa_group_rent= greenBuild90 %>%
+  group_by(class_a)  %>%  
+  summarize(MedianRent = median(Rent, na.rm = TRUE)) 
+classa_group_rent
+```
+
+**Thoughts**\
+From the investigation above it seems like size and class_a buildings are the only
+confounding variables as the green buildings tend to have larger spaces
+and larger spaces have higher rent. The excel guru here is only taking into account
+the median rent of all the building with more than 10% occupancy, however if we apply
+another filter to include only 15 story buildings, we see that the rent goes up 
+drastically for green buildings all the way to 37 dollars. However, it may not
+be wise to use this as there is only 10 green buildings that have 15 stories.
+After thorough analysis it seems like the excel guru is correct about
+recuperating the costs in a little over 8 years. 
+```{r echo=FALSE}
+greenBuilding9015= subset(greenBuild90, stories==15)
+stories_15_group = greenBuilding9015 %>%
+  group_by(green_rating)  %>%  
+  summarize(MedianRent = median(Rent, na.rm = TRUE), num=length(Rent)) 
+stories_15_group
 ```
 
 ## **Visual story telling: flights at ABIA**
