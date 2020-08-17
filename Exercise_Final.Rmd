@@ -4,7 +4,6 @@ author: "Namit Agrawal, Timothy Cheng"
 date: "08/16/20"
 output:
   pdf_document: default
-  md_document: default
 ---
 
 ## **Problem 1: Visual story telling: green buildings**
@@ -622,7 +621,7 @@ scaled <- as.data.frame(scale(social[,-c(1)],center = T,scale = T))
 mu <- attr(scale(social[,-c(1)]), "scaled:center")
 sigma <- attr(scale(social[,-c(1)]),"scaled:scale")
 ```
-Based on the plot, we decided to choose $k=7$.  We can now visualize the different clusters in the 2D PC space we chose earlier.  There seems to be a clear separation between clusters - those with a higher positive value for PC3 but low positive value for PC4 are individuals who love fitness (cluster 5).  Those who (we suspect) are college students are going to be in the positive PC4 range with negative PC3 values (cluster 3).
+Based on the plot, we decided to choose $k=7$.  We can now visualize the different clusters in the 2D PC space we chose earlier.  There seems to be a clear separation between clusters - those with a higher positive value for PC3 but low positive value for PC4 are individuals who love fitness (cluster 5).  Those who (we suspect) are college students are going to be in the positive PC4 range with negative PC3 values (cluster 4).
 ```{r}
 set.seed(1)
 cluster <- kmeans(scaled, 7, nstart=25)
@@ -633,68 +632,164 @@ qplot(PC3,PC4,data = scaled.points,color = factor(cols)) +
 ```
 A closer examination of the clusters as determined by kmeans gives us a better picture for what type of followers are within this group.
 ```{r}
-clust3 <- sort((cluster$center[3,]*sigma + mu), decreasing=TRUE)
-clust5 <- sort((cluster$center[5,]*sigma + mu), decreasing=TRUE)
-kmeansDF <- as.data.frame(cbind(clust3,clust5))
-colnames(kmeansDF)<- c("Cluster_3","Cluster_5")
-kmeansDF$category =row.names(kmeansDF)
-ggplot(kmeansDF, aes(x=reorder(category,Cluster_3), y=Cluster_3)) +
+clust4 <- as.data.frame(sort((cluster$center[4,]*sigma + mu), decreasing=TRUE))
+clust4$category <- rownames(clust4)
+clust5 <- as.data.frame(sort((cluster$center[5,]*sigma + mu), decreasing=TRUE))
+clust5$category <- rownames(clust5)
+kmeansDF <- merge(clust4,clust5, by = "category")
+colnames(kmeansDF)<- c("category","Cluster_4","Cluster_5")
+ggplot(kmeansDF, aes(x=reorder(category,Cluster_4), y=Cluster_4)) +
   geom_bar(stat='identity') + coord_flip()
 ggplot(kmeansDF, aes(x=reorder(category,Cluster_5), y=Cluster_5)) +
   geom_bar(stat='identity') + coord_flip()
 ```
 
 
+## add stuff later
+
+
+**Problem 5: 
 
 
 
-young <- loadings %>%
-  select(Category,PC2) %>%
-  arrange(desc(PC2))
-ggplot(young, aes(x=reorder(Category,PC2), y=PC2)) +
-  geom_bar(stat='identity') + coord_flip()
+setwd("C:/Users/timot/Documents/GitHub/PMAssignment/")
+library(tidyverse)
+library(tm)
+library(slam)
+library(proxy)
 
-scaled <- as.data.frame(scale(social[,-c(1)],center = T,scale = T))
-mu <- attr(scale(social[,-c(1)]), "scaled:center")
-sigma <- attr(scale(social[,-c(1)]),"scaled:scale")
+readerPlain = function(fname){
+  readPlain(elem=list(content=readLines(fname)), 
+            id=fname, language='en') }
 
-withinss = c()
-for(k in 2:20){
-  set.seed(1)
-  cluster_k = kmeans(scaled, k, nstart=25)
-  withinss= c(withinss, cluster_k$tot.withinss)
+
+file_list <- Sys.glob("ReutersC50/C50train/*")
+
+total <- c()
+author <- c()
+
+for (i in 1:length(file_list)){
+  articles <- Sys.glob(as.character(paste(file_list[i],"/*.txt", sep = "")))
+  author <- c(author,rep(strsplit(file_list[i],"/")[[1]][3],length(articles)))
+  total <- c(total,articles)
 }
-plot(c(2:20), withinss)
+
+data <- cbind(author,total)
+data <- cbind(data,lapply(data[,2],readerPlain))
+
+
+documents_raw <- Corpus(VectorSource(data[,3]))
+
+my_documents <- documents_raw %>%
+  tm_map(content_transformer(tolower))  %>%             
+  tm_map(content_transformer(removeNumbers)) %>%        
+  tm_map(content_transformer(removePunctuation)) %>%    
+  tm_map(content_transformer(stripWhitespace))          
+
+my_documents <- tm_map(my_documents, content_transformer(removeWords), stopwords("en"))
+
+DTM_train <- DocumentTermMatrix(my_documents)
+inspect(DTM_train[1:10,1:20])
+
+DTM_train <- removeSparseTerms(DTM_train, 0.95)
+tfidf_train = weightTfIdf(DTM_train)
+
+# TEST SET
+
+file_list2 <- Sys.glob("ReutersC50/C50test/*")
+
+total2 <- c()
+author2 <- c()
+
+for (i in 1:length(file_list2)){
+  articles2 <- Sys.glob(as.character(paste(file_list2[i],"/*.txt", sep = "")))
+  author2 <- c(author2,rep(strsplit(file_list2[i],"/")[[1]][3],length(articles2)))
+  total2 <- c(total2,articles2)
+}
+
+data2 <- cbind(author2,total2)
+data2 <- cbind(data2,lapply(data2[,2],readerPlain))
+
+
+documents_raw2 <- Corpus(VectorSource(data2[,3]))
+
+my_documents2 <- documents_raw2 %>%
+  tm_map(content_transformer(tolower))  %>%             
+  tm_map(content_transformer(removeNumbers)) %>%        
+  tm_map(content_transformer(removePunctuation)) %>%    
+  tm_map(content_transformer(stripWhitespace))          
+
+my_documents2 <- tm_map(my_documents2, content_transformer(removeWords), stopwords("en"))
+
+DTM_test <- DocumentTermMatrix(my_documents2)
+inspect(DTM_test[1:10,1:20])
+
+DTM_test <- removeSparseTerms(DTM_test, 0.95)
+tfidf_test <- weightTfIdf(DTM_test)
+
+# FILTER
+
+X_train <- as.matrix(tfidf_train)
+scrub <- which(colSums(X_train) == 0)
+X_train <- X_train[,-scrub]
+
+X_test <- as.matrix(tfidf_test)
+scrub2 <- which(colSums(X_test) == 0)
+X_test <- X_test[,-scrub2]
+
+
+# MATCH
+
+train.cols <- colnames(X_train)
+test.cols <- colnames(X_test)
+
+match <- intersect(train.cols,test.cols)
+X_test <- X_test[,match]
+X_train <- X_train[,match]
+
+
+# DIMENSION REDUCTION
+
+pca.x <- prcomp(X_train,scale=T)
+plot(summary(pca.x)$importance[3,])
+
+train <- pca.x$x[,1:400]
+test <- predict(pca.x,newdata = X_test)[,1:400]
+
+# PREDICTION
+
+train <- as.data.frame(cbind(author,train))
+test <- as.data.frame(cbind(author2,test))
+colnames(test)[length(test)] <- "author"
+
+library(randomForest)
+
 set.seed(1)
-cluster = kmeans(scaled, 7, nstart=25)
-cluster1=as.data.frame(cluster$center[1,]*sigma + mu)
-cluster1$category=row.names(cluster1)
-sort((cluster$center[2,]*sigma + mu), decreasing=TRUE)
-sort((cluster$center[3,]*sigma + mu), decreasing=TRUE)
-sort((cluster$center[4,]*sigma + mu), decreasing=TRUE)
-sort((cluster$center[5,]*sigma + mu), decreasing=TRUE)
-sort((cluster$center[6,]*sigma + mu), decreasing=TRUE)
-sort((cluster$center[7,]*sigma + mu), decreasing=TRUE)
-kmeansDF = as.data.frame(cbind(cluster$center[1,]*sigma + mu,
-                               cluster$center[2,]*sigma + mu,
-                               cluster$center[3,]*sigma + mu,
-                               cluster$center[4,]*sigma + mu,
-                               cluster$center[5,]*sigma + mu,
-                               cluster$center[6,]*sigma + mu,
-                               cluster$center[7,]*sigma + mu))
-colnames(kmeansDF)<- c("Cluster_1","Cluster_2","Cluster_3", "Cluster_4", "Cluster_5", "Cluster_6", "Cluster_7")
-kmeansDF$category =row.names(kmeansDF)
-ggplot(kmeansDF, aes(x=reorder(category,Cluster_1), y=Cluster_1)) +
-  geom_bar(stat='identity') + coord_flip()
-ggplot(kmeansDF, aes(x=reorder(category,Cluster_2), y=Cluster_2)) +
-  geom_bar(stat='identity') + coord_flip()
-ggplot(kmeansDF, aes(x=reorder(category,Cluster_3), y=Cluster_3)) +
-  geom_bar(stat='identity') + coord_flip()
-ggplot(kmeansDF, aes(x=reorder(category,Cluster_4), y=Cluster_4)) +
-  geom_bar(stat='identity') + coord_flip()
-ggplot(kmeansDF, aes(x=reorder(category,Cluster_5), y=Cluster_5)) +
-  geom_bar(stat='identity') + coord_flip()
-ggplot(kmeansDF, aes(x=reorder(category,Cluster_6), y=Cluster_6)) +
-  geom_bar(stat='identity') + coord_flip()
-ggplot(kmeansDF, aes(x=reorder(category,Cluster_7), y=Cluster_7)) +
-  geom_bar(stat='identity') + coord_flip()
+rf <- randomForest(as.factor(author)~.,data = train,importance = T,mtry = 5,ntree =100)
+
+preds <- predict(rf,newdata = test)
+tab <- table(preds,as.factor(test$author))
+totalsum <- 0
+for (i in 1:dim(tab)[1]){
+  totalsum <- totalsum + tab[i,i]
+}
+
+
+
+# KNN
+
+library(kknn)
+
+tr <- train
+t <- test
+
+knn <- kknn(as.factor(author)~.,train = tr, test = t, k = 50)
+
+
+
+
+# Boosting
+
+#library(gbm)
+
+#boosted <- gbm(as.factor(author)~.,data = train)
