@@ -7,14 +7,14 @@ output:
   md_document: default
 ---
 
-## **Visual story telling: green buildings**
+## **Problem 1: Visual story telling: green buildings**
 ```{r include=FALSE}
 library(mosaic)
 library(ggplot2)
 library(reshape)
 library(chron)
 library(quantmod)
-
+library(tidyverse)
 ```
 
 ```{r include=FALSE}
@@ -29,22 +29,21 @@ attach(greenBuild)
 
 It does make sense to use the median rather than mean as the non-green buildings
 have many outliers as suggested by the boxplot below
-```{r echo=FALSE, fig.align='center'}
+```{r echo=FALSE, fig.align = "center",fig.width = 6,fig.height = 4}
 ggplot(greenBuild, aes(x=green_rating, y=Rent)) + 
   geom_boxplot()
 ```
 
 
-The excel guru is right about removing buildings with less than 10%  occupancy
-as based on the summary below, it looks like there is only 1 green building to consider
-, very few class a buildings and half the building have only 3 stories hence
+The stats guru is right about removing buildings with less than 10%  occupancy
+as based on the summary below. Within the group of buildings that have only 10% occupancy, there is only one building with a green rating.  In addition, roughly half of the buildings have 3 stories and very few buildings have a Class A designation.  Hence
 we should remove buildings with less than 10% occupancy as it may distort the analysis.
 ```{r echo=FALSE}
 summary(subset(greenBuild, leasing_rate<10))
 ```
 
 The median rent for green buildings and non-green buildings is correct if buildings
-with more than 10% occupancy rate are considered 
+with more than 10% occupancy rate are considered.
 ```{r echo=FALSE}
 greenBuild90 = subset(greenBuild, leasing_rate>=10)
 medianRent = greenBuild90 %>% 
@@ -52,9 +51,12 @@ medianRent = greenBuild90 %>%
   summarize(MedianRent = median(Rent, na.rm = TRUE)) 
 medianRent
 ```
-
+Assuming that the building is 250000 square feet, it seems that the stats guru is correct about
+recuperating the costs in a little under 8 years.
 
 **Confounding variables investigation**\
+
+**Renovated Buildings**\
 Based on the numerical summary analysis for buildings that are renovated,
 it does not seem there is much confounding going on as the median rents 
 for non renovated and renovated buildings are similar especially for green buildings
@@ -73,9 +75,17 @@ renovated_group_rent = greenBuild90 %>%
 renovated_group_rent
 ```
 
-Use median for stories since there are some outliers as suggested by the plot below.
-It looks there is not much evidence for confounding going on with stories even though there is slight increase in rent as the number of stories goes up. The median for stories
-for green building is only 1 higher so stories may not directly be affecting the rent.
+**Number of Stories**\
+As suggested by the plot below, the median for stories is a valid selection since there are some outliers.
+It looks there is not much evidence of confounding for the number of stories in the building, even though there is a slight increase in rent as the number of stories goes up. The median for stories of green buildings only differs by 1, so stories may not directly be affecting the rent.
+
+```{r echo=FALSE,fig.align = "center",fig.width = 6,fig.height = 4}
+ggplot(data=greenBuild90) + 
+  geom_point(mapping=aes(x=stories, y=Rent, colour=green_rating)) +
+  labs(x="Stories", y='Rent', title = 'Green buildings: Stories VS Rent',
+       color='Green building')
+```
+
 ```{r echo=FALSE}
 stories_group = greenBuild90 %>%
   group_by(green_rating)  %>%  
@@ -83,14 +93,21 @@ stories_group = greenBuild90 %>%
 stories_group
 ```
 
+**Age**\
 
-```{r echo=FALSE}
+An initial analysis provides a stark contrast in age between green and non-green buildings.
+```{r,echo = FALSE,fig.align = "center",fig.width = 6,fig.height = 4}
+ggplot(greenBuild, aes(x=green_rating, y=age)) + 
+  geom_boxplot()
+```
+However, it looks like there is no confounding for age, as there is no correlation between
+the age of the building and the rent from the plot below.
+```{r echo=FALSE,fig.align = "center",fig.width = 6,fig.height = 4}
 ggplot(data=greenBuild90) + 
-  geom_point(mapping=aes(x=stories, y=Rent, colour=green_rating)) +
-  labs(x="Stories", y='Rent', title = 'Green buildings: Stories VS Rent',
+  geom_point(mapping=aes(x=age, y=Rent, colour=green_rating)) +
+  labs(x="Age", y='Rent', title = 'Green buildings: Age VS Rent',
        color='Green building')
 ```
-
 
 ```{r echo=FALSE}
 age_group = greenBuild90 %>%
@@ -99,17 +116,9 @@ age_group = greenBuild90 %>%
 age_group
 ```
 
-It looks like there is no confounding for age as there is no correlation between
-the age of the building and the rent from the plot below.
-```{r echo=FALSE}
-ggplot(data=greenBuild90) + 
-  geom_point(mapping=aes(x=age, y=Rent, colour=green_rating)) +
-  labs(x="Age", y='Rent', title = 'Green buildings: Age VS Rent',
-       color='Green building')
-```
-
-It looks like size is definitely a confounding variable as size is correlated 
-with rent from plot below and the median size is double for green buildings versus non green. Thus, there is a premium for size when it comes to rent as expected.
+**Size**\
+It looks like size is definitely a confounding variable, as size is correlated 
+with rent from plot below and the median size for green buildings is double that of non-green. Thus, there is a premium in rent for larger sizes, as expected.
 ```{r echo=FALSE}
 size_group = greenBuild90 %>%
   group_by(green_rating)  %>%  
@@ -117,16 +126,17 @@ size_group = greenBuild90 %>%
 size_group
 ```
 
-
-```{r echo=FALSE}
+```{r echo=FALSE,fig.align = "center",fig.width = 6,fig.height = 4}
 ggplot(data=greenBuild90) + 
   geom_point(mapping=aes(x=size, y=Rent, colour=green_rating)) +
   labs(x="Size", y='Rent', title = 'Green buildings: size VS Rent',
        color='Green building')
 ```
-There does not seem to be confounding for cluster rent as the median for cluster 
-rent is the same regardless if its green or not, however cluster rent is highly
-correlated with rent
+
+**Cluster Rent**\
+There does not seem to be confounding for cluster rent, as the median for cluster 
+rent is approximately the same between green and non-green buildings. However, cluster rent is highly
+correlated with the rent of the building.
 ```{r echo=FALSE}
 cluster_rent_group = greenBuild90 %>%
   group_by(green_rating)  %>%  
@@ -134,21 +144,27 @@ cluster_rent_group = greenBuild90 %>%
 cluster_rent_group
 ```
 
-```{r echo=FALSE}
+```{r echo=FALSE,fig.align = "center",fig.width = 6,fig.height = 4}
 ggplot(data=greenBuild90) + 
   geom_point(mapping=aes(x=cluster_rent, y=Rent, colour=green_rating)) +
   labs(x="Cluster Rent", y='Rent', title = 'Green buildings: Cluster rent VS Rent',
        color='Green building')
 ```
 
-It looks like class a buildings are a confounding variable as class a buildings
-correlate with green_rating and class a buildings correlate with overall rent as
+**Class**\
+It looks like the Class designation of buildings is a confounding variable, as Class A buildings
+have generally higher median rents - in addition, having a green_rating with the Class A designation drives median rents even higher. Class A designated buildings seem to correlate with overall rent as
 well.
 ```{r echo=FALSE}
 classa_group= greenBuild90 %>%
   group_by(class_a, green_rating)  %>%  
   summarize(MedianRent = median(Rent, na.rm = TRUE)) 
 classa_group
+```
+
+```{r,echo = FALSE,fig.align = "center",fig.width = 6,fig.height = 4}
+ggplot(greenBuild, aes(x=class_a, y=Rent)) + 
+  geom_boxplot()
 ```
 
 ```{r echo=FALSE}
@@ -159,15 +175,12 @@ classa_group_rent
 ```
 
 **Thoughts**\
-From the investigation above it seems like size and class_a buildings are the only
-confounding variables as the green buildings tend to have larger spaces
-and larger spaces have higher rent. The excel guru here is only taking into account
-the median rent of all the building with more than 10% occupancy, however if we apply
-another filter to include only 15 story buildings, we see that the rent goes up 
-drastically for green buildings all the way to 37 dollars. However, it may not
-be wise to use this as there is only 10 green buildings that have 15 stories.
-After thorough analysis it seems like the excel guru is correct about
-recuperating the costs in a little over 8 years. 
+From the investigation above it seems like size and class are the only
+confounding variables, as the green buildings tend to have larger spaces
+and larger spaces have higher rent. However, the stats guru is only taking into account
+the median rent of all the building with more than 10% occupancy.  If we apply another filter to include only 15 story buildings, we see that the rent goes up 
+drastically for green buildings - all the way to 37 dollars. However, it may not
+be wise to use this filter as there is only 10 green buildings that have 15 stories.
 ```{r echo=FALSE}
 greenBuilding9015= subset(greenBuild90, stories==15)
 stories_15_group = greenBuilding9015 %>%
@@ -176,8 +189,10 @@ stories_15_group = greenBuilding9015 %>%
 stories_15_group
 ```
 
-## **Visual story telling: flights at ABIA**
+In general, the guru is correct with his analysis, but the analysis is performed on a dataset with a large range of different building specifications.  For example, the dataset only contains 10 green buildings that have 15 stories.  A larger sample size that adheres to the developers desired specs would provide more valid results.
+## **Problem 2: Visual story telling: flights at ABIA**
 
+**Most active airlines**\
 ```{r include=FALSE}
 abia = read.csv("abia.csv", stringsAsFactors = FALSE)
 abia$Month = as.factor(abia$Month)
@@ -196,11 +211,10 @@ abia_austin_Arr = subset(abia, Dest == 'AUS')
 
 attach(abia)
 ```
-
 Here we analyze which airlines are most active throughout the year in terms of
 the distance flown. As seen by the plot, it appears Southwest (WN) and American
-Airlines(AA) are the most active in flying out of ABIA and flying to ABIA
-```{r echo=FALSE, fig.align='center'}
+Airlines(AA) are the most active in flying out of ABIA and flying to ABIA.
+```{r echo=FALSE, fig.align = "center",fig.width = 6,fig.height = 4}
 ggplot(abia, aes(x=Month, y=Distance)) + 
   geom_bar(stat='identity') +geom_bar(stat='identity') +
   facet_wrap(~ UniqueCarrier, nrow = 4)+
@@ -211,6 +225,7 @@ ggplot(abia, aes(x=Month, y=Distance)) +
   theme(plot.title = element_text(hjust = 0.5))
 ```
 
+**Delays by Day of Week**\
 ```{r include=FALSE}
 delay_dep_sum = abia_austin_Dep %>%
   group_by(DayOfWeek)  %>%  
@@ -223,22 +238,19 @@ delay_sum = merge(delay_dep_sum, delay_arr_sum, by="DayOfWeek")
 delay_sum <- melt(delay_sum, id.vars = 'DayOfWeek')
 
 ```
-
-
-
-In this plot, we analyze the departure and arrival delay for each day of the week.
-It looks their more arrival delays and than departure delays and Fridays is
-probably the worst day to travel 
-```{r echo=FALSE, fig.align='center'}
+In the plot below, we analyze the departure and arrival delay for each day of the week.
+There are more arrival delays than departure delays and Friday is the worst day to travel to/from Austin.
+```{r echo=FALSE, fig.align = "center",fig.width = 6,fig.height = 4}
 ggplot(delay_sum, aes(x=DayOfWeek, y=value, fill=variable )) + 
   geom_bar(stat='identity', position='dodge') +
   labs(title="departure and arrival delay for each day of week", 
        y="Total Delay Time",
-       x = "Day Of the Week (1-Monday)",
+       x = "Day Of the Week (1 = Monday)",
        fill="Delay")+
   theme(plot.title = element_text(hjust = 0.5))
 ```
 
+**Average Delays per Airline**\
 ```{r include=FALSE}
 num_dep_delay_by_carrier = abia_austin_Dep %>%
   group_by(UniqueCarrier)  %>%  
@@ -252,11 +264,9 @@ num_delay_by_carrier = merge(num_dep_delay_by_carrier, num_arr_delay_by_carrier,
 num_delay_by_carrier = as.data.frame(num_delay_by_carrier)
 num_delay_by_carrier <- melt(num_delay_by_carrier, id.vars = 'UniqueCarrier')
 ```
-
-This plot analyzes the average departure and arrival delay for each airline.
-It looks like Piedmont Airlines (US) arrive early on average as the delay time
-is negative
-```{r echo=FALSE, fig.align='center'}
+This plot analyzes the average departure and arrival delay for each airline.  It looks like Piedmont Airlines (US) arrives and departs early on average as the delay time
+is negative.
+```{r echo=FALSE, fig.align = "center",fig.width = 6,fig.height = 4}
 ggplot(num_delay_by_carrier, aes(x=UniqueCarrier, y=value, fill=variable )) + 
   geom_bar(stat='identity', position='dodge') +
   labs(title="Average departure and arrival delay for each airline", 
@@ -267,6 +277,7 @@ ggplot(num_delay_by_carrier, aes(x=UniqueCarrier, y=value, fill=variable )) +
 
 ```
 
+**Most common Delay types by Airline**\
 ```{r include=FALSE}
 num_cancelled_by_carrier = abia %>%
   group_by(UniqueCarrier, CancellationCode)  %>%  
@@ -281,18 +292,19 @@ Cancellation_probs = subset(Cancellation_probs, CancellationCode=='A' | Cancella
 Cancellation_probs$CancellationCode = ifelse(Cancellation_probs$CancellationCode=='A', "Carrier", ifelse(Cancellation_probs$CancellationCode =="B", "Weather", "NAS"))
 ```
 
-Here we analyze the probability of delay by airline split by the type of delay.
+Here we analyze the proportions of delays by airlines via the type of delay.
 It look like most airlines suffer from carrier and weather delays.
-```{r echo=FALSE, fig.align='center'}
+```{r echo=FALSE, fig.align = "center",fig.width = 6,fig.height = 4}
 ggplot(Cancellation_probs, aes(x=UniqueCarrier, y=True_prob, fill=CancellationCode )) + 
   geom_bar(stat='identity', position='dodge')+
-  labs(title="Probabilty of delay for each airline by type of delay", 
-       y="Probablity",
+  labs(title="Proportion of delay for each airline by type of delay", 
+       y="Proportion",
        x = "Airline Carrier Code",
        fill="Type of Delay")+
   theme(plot.title = element_text(hjust = 0.5))
 ```
 
+**Flights per hour of the Day**\
 ```{r include=FALSE}
 num_flights_dep_per_hour = abia_austin_Dep %>%
   group_by(DepHour)  %>%  
@@ -311,10 +323,9 @@ num_flights_per_hours = merge(num_flights_arr_per_hour, num_flights_dep_per_hour
 num_flights_per_hours <- melt(num_flights_per_hours, id.vars = 'Hour')
 ```
 
-This plot analyzes what are most frequent departure and arrival times. It looks
-most passengers fly out early in the morning and most fly in late at night. Between
+The plot below analyzes what are most frequent departure and arrival times.  Passengers typically fly *out* early in the morning and fly *in* late at night. Between
 noon and evening there is an even split between passengers flying in and out.
-```{r echo=FALSE, fig.align='center'}
+```{r echo=FALSE, fig.align = "center",fig.width = 7,fig.height = 4}
 ggplot(num_flights_per_hours, aes(x=Hour, y=value, fill=variable )) + 
   geom_bar(stat='identity', position='dodge') +
   labs(title="Number of flights at ABIA for each hour by departure and arrival", 
@@ -324,6 +335,7 @@ ggplot(num_flights_per_hours, aes(x=Hour, y=value, fill=variable )) +
   theme(plot.title = element_text(hjust = 0.5))
 ```
 
+**Flights by City**\
 ```{r include=FALSE}
 num_flights_going_from_Aus = abia_austin_Dep %>%
   group_by(Dest)  %>%  
@@ -344,9 +356,9 @@ top_ten_city = merge(top_ten_dest, top_ten_ori, by="City")
 top_ten_city <- melt(top_ten_city, id.vars = 'City')
 ```
 
-This plot analyzes the top ten airports to which passengers fly to and fly in from.
+The plot below analyzes the top ten airports to which passengers fly to and fly in from.
 Dallas and Houston are by far the most popular destinations.
-```{r echo=FALSE, fig.align='center'}
+```{r echo=FALSE, fig.align = "center",fig.width = 6,fig.height = 4}
 ggplot(top_ten_city, aes(x=City, y=value, fill=variable )) + 
   geom_bar(stat='identity', position='dodge') +
   labs(title="Top 10 cities for incoming and outgoing flights", 
@@ -356,6 +368,7 @@ ggplot(top_ten_city, aes(x=City, y=value, fill=variable )) +
   theme(plot.title = element_text(hjust = 0.5))
 ```
 
+**Average time spent flying by Airline**\
 ```{r include=FALSE}
 Avg_Time_By_Carrier = abia_austin_Dep %>%
   group_by(UniqueCarrier)  %>%  
@@ -363,9 +376,8 @@ Avg_Time_By_Carrier = abia_austin_Dep %>%
 
 ```
 
-This plot analyzes the average time spent flying for each airline. Looks like
-JetBlue (B6) flies for more than 3 hours on average.
-```{r echo=FALSE, fig.align='center'}
+The plot below analyzes the average time spent flying for each airline.  JetBlue (B6) flies for more than 3 hours on average.
+```{r echo=FALSE, fig.align = "center",fig.width = 6,fig.height = 4}
 ggplot(Avg_Time_By_Carrier, aes(x=UniqueCarrier, y=Avg_Time)) + 
   geom_bar(stat='identity') +
   labs(title="Average Air Time for each airline", 
@@ -374,6 +386,7 @@ ggplot(Avg_Time_By_Carrier, aes(x=UniqueCarrier, y=Avg_Time)) +
   theme(plot.title = element_text(hjust = 0.5))
 ```
 
+**Average deviation off of Schedule Departure Time**\
 ```{r include=FALSE}
 Avg_Time_By_Carrier = abia_austin_Dep %>%
   group_by(UniqueCarrier)  %>%  
@@ -395,10 +408,9 @@ temp[2,]=Diff_Dep_Time[1,]
 Diff_Dep_Time=temp
 ```
 
-This plot analyzes on average how often an airline deviates departure time
-from scheduled departure time. It looks like most airlines leave between 0 to 10
+The plot below analyzes on average how often an airline deviates from its scheduled departure time.  Most airlines leave between 0 to 10
 minutes earlier than scheduled!
-```{r echo=FALSE, fig.align='center'}
+```{r echo=FALSE, fig.align = "center",fig.width = 6,fig.height = 4}
 ggplot(Diff_Dep_Time, aes(x=reorder(Diff_Category, -Times), y=Times)) + 
   geom_bar(stat='identity')+
   labs(title="Actual minus Scheduled Departure Time", 
@@ -407,8 +419,9 @@ ggplot(Diff_Dep_Time, aes(x=reorder(Diff_Category, -Times), y=Times)) +
   theme(plot.title = element_text(hjust = 0.5))
 ```
 
-## **Portfolio modeling**
+## **Problem 3: Portfolio modeling**
 
+**Background**\
 For this problem, we are analyzing five different ETFs ranging from Gold ETFs
 to Oil related ETFs.\
 
@@ -436,9 +449,9 @@ BNOa <- adjustOHLC(BNO)
 SLVa <- adjustOHLC(SLV)
 ```
 
-Simulate how volatile each ETF is. Looks like oil ETFs are the most volatile
-of the five chosen
-```{r echo=FALSE}
+**Volatility**\
+Below are a few plots for the closing prices of ETF. The oil ETFs are the most volatile of the five funds chosen.
+```{r ,echo=FALSE,fig.align = "center",fig.width = 5,fig.height = 3}
 plot(ClCl(GLDa),main = "GLD Price since 2014",
      xlab = "Amount in Dollars")
 plot(ClCl(USOa),main = "USO Price since 2014",
@@ -449,7 +462,6 @@ plot(ClCl(BNOa),main = "BNO Price since 2014",
      xlab = "Amount in Dollars")
 plot(ClCl(SLVa),main = "SLV Price since 2014",
      xlab = "Amount in Dollars")
-
 ```
 
 ```{r include=FALSE}
@@ -458,9 +470,8 @@ all.r <- as.matrix(na.omit(returns))
 n <- nrow(all.r)
 ```
 
-
-Portfolio 1 : Equal weights to all ETFs (i.e 20 percent to all)
-It looks like our 5% value at risk is around 9674
+**Portfolios**\
+**Portfolio 1** : A portfolio of equal weights to all ETFs (i.e, 20 percent to all ETFs)
 ```{r echo=FALSE}
 boot.portfolio1 <- c()
 set.seed(1)
@@ -484,15 +495,14 @@ hist(boot.portfolio1,main = "Portfolio 1 Returns",
 hist(boot.portfolio1 - 100000, breaks = 30,main = "Portfolio 1 profit/loss",
      xlab = "Amount in Dollars")
 ```
+
 ```{r echo=FALSE}
 print(abs(quantile(boot.portfolio1 - 100000,prob = 0.05)))
 print(mean(boot.portfolio1))
 ```
+The 5% value at risk for this particular portfolio is roughly $9,674.\
 
-Portfolio 2 : Invest 96 percent of wealth into gold and 1 percent each into 
-the remaining 4 ETFs.
-
-It looks like our 5% value at risk is around 5670
+**Portfolio 2** : A portfolio that invests 96 percent of wealth into gold and 1 percent into each of the remaining 4 ETFs.
 ```{r echo=FALSE}
 boot.portfolio2 <- c()
 set.seed(1)
@@ -522,11 +532,11 @@ print(abs(quantile(boot.portfolio2 - 100000,prob = 0.05)))
 print(mean(boot.portfolio2))
 
 ```
+The 5% value at risk for this particular portolio is roughly $5,670.\
 
-Portfolio 3 : Invest 60 percent of wealth into VNQ and 10 percent each into 
-the remaining 4 ETFs.
 
-It looks like our 5% value at risk is around 7695
+**Portfolio 3** : A portfolio that invests 60 percent of wealth into VNQ and 10 percent into each of the remaining 4 ETFs.
+
 ```{r echo=FALSE}
 boot.portfolio3 <- c()
 set.seed(1)
@@ -555,10 +565,106 @@ print(abs(quantile(boot.portfolio3 - 100000,prob = 0.05)))
 print(mean(boot.portfolio3))
 
 ```
+The 5% value at risk of this particular portfolio is roughly $7,695.\
 
 **Report**\
-Based on our analysis, it looks like portfolio 2 performed the best where basically
-all of our investment went into gold. The portfolio had the highest returns and the 
-lowest value at risk at 5%. This is an interesting result as diversification of the 
+Based on our analysis, portfolio 2 performed the best. By investing 96% of our wealth into the gold ETF, we were able to achieve the highest returns and the lowest VaR (value at risk) at 5% between all portfolios. This is an interesting result as diversification of the 
 portfolio hurt our investments which suggests that ETFs related to Oil and Silver 
-are significantly more volatile than Gold. This also suggests that Gold is typically a safe investment to make.
+are significantly more volatile than Gold. This also suggests that Gold is typically a safe investment to make.\
+
+**Problem 4: Market Segmentation**\
+From the dataset provided by the company "NutrientH20", we hope to extract some vital market information regarding the types of followers that "NutrientH20" has.  
+```{r include = F}
+social <- read.csv("social_marketing.csv",header = T)
+scaled <- as.data.frame(scale(social[,-c(1)],center = T,scale = T))
+ID <- as.data.frame(social[,1])
+```
+
+We first perform dimension reduction on the dataset to improve computational ability.  In addition, we can see which 
+```{r}
+pca.social <- prcomp(scaled)
+points <- as.data.frame(c(summary(pca.social)$importance[3,]))
+points$PC <- factor(rownames(points))
+colnames(points)[1] <- "CumulativeVarianceExplained"
+points <- data.frame(points[1:10,])
+ggplot(data = points,aes(x = PC,y = CumulativeVarianceExplained)) + 
+  geom_point()
+```
+
+
+scaled.pca <- pca.social$x[,1:15]
+head(round(pca.social$rotation[,1:3],2))
+
+
+loadings.summary <- pca.social$rotation %>%
+  as.data.frame() %>%
+  rownames_to_column("Category")
+# spam
+spam <- loadings.summary %>%
+  select(Category,PC1) %>%
+  arrange(desc(PC1))
+
+# young
+young <- loadings.summary %>%
+  select(Category,PC2) %>%
+  arrange(desc(PC2))
+
+# fit
+fit <- loadings.summary %>%
+  select(Category,PC3) %>%
+  arrange(desc(PC3))
+
+# college gamer
+game <- loadings.summary %>%
+  select(Category,PC4) %>%
+  arrange(desc(PC4))
+
+# college gamer
+loadings.summary %>%
+  select(Category,PC5) %>%
+  arrange(desc(PC5))
+
+# blogger
+loadings.summary %>%
+  select(Category,PC6) %>%
+  arrange(desc(PC6))
+
+# artist/travel enthusiast
+art <- loadings.summary %>%
+  select(Category,PC7) %>%
+  arrange(desc(PC7))
+
+# singles
+loadings.summary %>%
+  select(Category,PC10) %>%
+  arrange(desc(PC10))
+
+
+
+followers <- as.data.frame(pca.social$x)
+rownames(followers) <- ID$social[, 1]
+
+ggplot(young, aes(x=reorder(Category,PC2), y=PC2)) +
+  geom_bar(stat='identity') + coord_flip()
+
+ggplot(fit, aes(x=reorder(Category,PC3), y=PC3)) +
+  geom_bar(stat='identity') + coord_flip()
+
+ggplot(game, aes(x=reorder(Category,PC4), y=PC4)) +
+  geom_bar(stat='identity') + coord_flip()
+
+
+
+scaled <- as.data.frame(scale(social[,-c(1)],center = T,scale = T))
+mu <- attr(scale(social[,-c(1)]), "scaled:center")
+sigma <- attr(scale(social[,-c(1)]),"scaled:scale")
+
+
+clust <- kmeanspp(scaled,k = 5,nstart = 25)
+colors <- clust$cluster
+
+subset <- pca.social$x[,c(3,4)]
+plot(subset, col = colors, pch = 16)
+x <- c("Fitness Enthusiast","College Student")
+cols <- c("black","turquiose")
+

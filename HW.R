@@ -263,8 +263,6 @@ colors <- clust$cluster
 
 subset <- pca.social$x[,c(3,4)]
 plot(subset, col = colors, pch = 16)
-x <- c("Fitness Enthusiast","College Student")
-cols <- c("black","turquiose")
 
 ###################################################
 
