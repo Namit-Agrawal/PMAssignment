@@ -455,8 +455,3 @@ data <- subset(basket.rules, subset=lift > 2)
 
 
 
-
-
-plot(basket.rules,method = "two-key plot")
-
-
