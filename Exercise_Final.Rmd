@@ -1,0 +1,437 @@
+---
+title: "Exercise"
+author: "Namit Agrawal, Timothy Cheng"
+date: "08/16/20"
+output:
+  pdf_document: default
+  md_document: default
+---
+
+## **Visual story telling: green buildings**
+```{r include=FALSE}
+library(mosaic)
+library(ggplot2)
+library(reshape)
+library(chron)
+library(quantmod)
+
+```
+
+```{r include=FALSE}
+greenBuild = read.csv("greenbuildings.csv", stringsAsFactors = FALSE)
+greenBuild$green_rating = as.factor(greenBuild$green_rating)
+greenBuild$class_a = as.factor(greenBuild$class_a)
+greenBuild$renovated = as.factor(greenBuild$renovated)
+greenBuild$amenities = as.factor(greenBuild$amenities)
+
+attach(greenBuild)
+```
+
+```{r}
+ggplot(data=greenBuild) + 
+  geom_point(mapping=aes(x=renovated, y=Rent, colour=green_rating)) +
+  labs(x="Renovated", y='Rent', title = 'Green buildings: Cluster rent VS Rent',
+       color='Green building')
+
+ggplot(data=greenBuild) + 
+  geom_point(mapping=aes(x=stories, y=Rent, colour=green_rating)) +
+  labs(x="Stories", y='Rent', title = 'Green buildings: Cluster rent VS Rent',
+       color='Green building')
+
+ggplot(data=greenBuild) + 
+  geom_point(mapping=aes(x=age, y=Rent, colour=green_rating)) +
+  labs(x="Age", y='Rent', title = 'Green buildings: Cluster rent VS Rent',
+       color='Green building')
+
+ggplot(data=greenBuild) + 
+  geom_point(mapping=aes(x=size, y=Rent, colour=green_rating)) +
+  labs(x="Size", y='Rent', title = 'Green buildings: Cluster rent VS Rent',
+       color='Green building')
+```
+
+## **Visual story telling: flights at ABIA**
+
+```{r include=FALSE}
+abia = read.csv("abia.csv", stringsAsFactors = FALSE)
+abia$Month = as.factor(abia$Month)
+abia$DayOfWeek = as.factor(abia$DayOfWeek)
+
+
+abia$DepHour=sapply(abia$DepTime, function(x) x%/%100)
+abia$ArrHour=sapply(abia$ArrTime, function(x) x%/%100)
+
+abia$Diff_DepTime=difftime(as.POSIXct((times=sub("(\\d+)(\\d{2})", "\\1:\\2", abia$DepTime)),
+           format='%H:%M'),  as.POSIXct((times=sub("(\\d+)(\\d{2})", "\\1:\\2", abia$CRSDepTime)),
+                                        format='%H:%M'), units="mins")
+abia$Diff_DepTime=as.numeric(abia$Diff_DepTime)
+abia_austin_Dep = subset(abia, Origin == 'AUS')
+abia_austin_Arr = subset(abia, Dest == 'AUS')
+
+attach(abia)
+```
+
+Here we analyze which airlines are most active throughout the year in terms of
+the distance flown. As seen by the plot, it appears Southwest (WN) and American
+Airlines(AA) are the most active in flying out of ABIA and flying to ABIA
+```{r echo=FALSE, fig.align='center'}
+ggplot(abia, aes(x=Month, y=Distance)) + 
+  geom_bar(stat='identity') +geom_bar(stat='identity') +
+  facet_wrap(~ UniqueCarrier, nrow = 4)+
+  scale_x_discrete(guide = guide_axis(check.overlap = TRUE))+
+  labs(title="Distance traveled by different airlines each month", 
+       y="Distance",
+       x = "Month")+
+  theme(plot.title = element_text(hjust = 0.5))
+```
+
+```{r include=FALSE}
+delay_dep_sum = abia_austin_Dep %>%
+  group_by(DayOfWeek)  %>%  
+  summarize(ToDepDelay = sum(DepDelay, na.rm = TRUE)) 
+
+delay_arr_sum = abia_austin_Arr %>%
+  group_by(DayOfWeek)  %>%  
+  summarize(ToArrDelay = sum(ArrDelay, na.rm = TRUE)) 
+delay_sum = merge(delay_dep_sum, delay_arr_sum, by="DayOfWeek")
+delay_sum <- melt(delay_sum, id.vars = 'DayOfWeek')
+
+```
+
+
+
+In this plot, we analyze the departure and arrival delay for each day of the week.
+It looks their more arrival delays and than departure delays and Fridays is
+probably the worst day to travel 
+```{r echo=FALSE, fig.align='center'}
+ggplot(delay_sum, aes(x=DayOfWeek, y=value, fill=variable )) + 
+  geom_bar(stat='identity', position='dodge') +
+  labs(title="departure and arrival delay for each day of week", 
+       y="Total Delay Time",
+       x = "Day Of the Week (1-Monday)",
+       fill="Delay")+
+  theme(plot.title = element_text(hjust = 0.5))
+```
+
+```{r include=FALSE}
+num_dep_delay_by_carrier = abia_austin_Dep %>%
+  group_by(UniqueCarrier)  %>%  
+  summarize(AvgDepDelay = mean(DepDelay, na.rm = TRUE)) 
+
+num_arr_delay_by_carrier = abia_austin_Arr %>%
+  group_by(UniqueCarrier)  %>%  
+  summarize(AvgArrDelay = mean(ArrDelay, na.rm = TRUE)) 
+
+num_delay_by_carrier = merge(num_dep_delay_by_carrier, num_arr_delay_by_carrier, by="UniqueCarrier")
+num_delay_by_carrier = as.data.frame(num_delay_by_carrier)
+num_delay_by_carrier <- melt(num_delay_by_carrier, id.vars = 'UniqueCarrier')
+```
+
+This plot analyzes the average departure and arrival delay for each airline.
+It looks like Piedmont Airlines (US) arrive early on average as the delay time
+is negative
+```{r echo=FALSE, fig.align='center'}
+ggplot(num_delay_by_carrier, aes(x=UniqueCarrier, y=value, fill=variable )) + 
+  geom_bar(stat='identity', position='dodge') +
+  labs(title="Average departure and arrival delay for each airline", 
+       y="Average Delay Time",
+       x = "Airline Carrier Code",
+       fill="Delay")+
+  theme(plot.title = element_text(hjust = 0.5))
+
+```
+
+```{r include=FALSE}
+num_cancelled_by_carrier = abia %>%
+  group_by(UniqueCarrier, CancellationCode)  %>%  
+  summarize(Cancelprob = sum(Cancelled, na.rm = TRUE))
+
+num_cancelled_dummy = abia %>%
+  group_by(UniqueCarrier)  %>%  
+  summarize(Total = length(Cancelled))
+Cancellation_probs=merge(num_cancelled_by_carrier, num_cancelled_dummy, by="UniqueCarrier")
+Cancellation_probs$True_prob = Cancellation_probs$Cancelprob/Cancellation_probs$Total
+Cancellation_probs = subset(Cancellation_probs, CancellationCode=='A' | CancellationCode=='B' | CancellationCode=='C' )
+Cancellation_probs$CancellationCode = ifelse(Cancellation_probs$CancellationCode=='A', "Carrier", ifelse(Cancellation_probs$CancellationCode =="B", "Weather", "NAS"))
+```
+
+Here we analyze the probability of delay by airline split by the type of delay.
+It look like most airlines suffer from carrier and weather delays.
+```{r echo=FALSE, fig.align='center'}
+ggplot(Cancellation_probs, aes(x=UniqueCarrier, y=True_prob, fill=CancellationCode )) + 
+  geom_bar(stat='identity', position='dodge')+
+  labs(title="Probabilty of delay for each airline by type of delay", 
+       y="Probablity",
+       x = "Airline Carrier Code",
+       fill="Type of Delay")+
+  theme(plot.title = element_text(hjust = 0.5))
+```
+
+```{r include=FALSE}
+num_flights_dep_per_hour = abia_austin_Dep %>%
+  group_by(DepHour)  %>%  
+  summarize(TotalDep = length(DepHour))
+
+num_flights_arr_per_hour = abia_austin_Arr %>%
+  group_by(ArrHour)  %>%  
+  summarize(TotalArr = length(ArrHour))
+
+num_flights_arr_per_hour=subset(num_flights_arr_per_hour, !is.na(ArrHour))
+num_flights_dep_per_hour=subset(num_flights_dep_per_hour, !is.na(DepHour))
+colnames(num_flights_arr_per_hour)[1] <- "Hour"
+colnames(num_flights_dep_per_hour)[1] <- "Hour"
+
+num_flights_per_hours = merge(num_flights_arr_per_hour, num_flights_dep_per_hour, by="Hour")
+num_flights_per_hours <- melt(num_flights_per_hours, id.vars = 'Hour')
+```
+
+This plot analyzes what are most frequent departure and arrival times. It looks
+most passengers fly out early in the morning and most fly in late at night. Between
+noon and evening there is an even split between passengers flying in and out.
+```{r echo=FALSE, fig.align='center'}
+ggplot(num_flights_per_hours, aes(x=Hour, y=value, fill=variable )) + 
+  geom_bar(stat='identity', position='dodge') +
+  labs(title="Number of flights at ABIA for each hour by departure and arrival", 
+       y="Number of Flights",
+       x = "Hour",
+       fill="Departure-Arrival")+
+  theme(plot.title = element_text(hjust = 0.5))
+```
+
+```{r include=FALSE}
+num_flights_going_from_Aus = abia_austin_Dep %>%
+  group_by(Dest)  %>%  
+  summarize(DestinationCity = length(Dest))
+
+num_flights_going_To_Aus = abia_austin_Arr %>%
+  group_by(Origin)  %>%  
+  summarize(OriginCity = length(Origin))
+
+num_flights_going_from_Aus=as.data.frame(num_flights_going_from_Aus)
+num_flights_going_To_Aus = as.data.frame(num_flights_going_To_Aus)
+
+top_ten_dest=num_flights_going_from_Aus[order(-num_flights_going_from_Aus$DestinationCity),][1:10,]
+top_ten_ori =  num_flights_going_To_Aus[order(-num_flights_going_To_Aus$OriginCity),][1:10,]
+colnames(top_ten_dest)[1] <- "City"
+colnames(top_ten_ori)[1] <- "City"
+top_ten_city = merge(top_ten_dest, top_ten_ori, by="City")
+top_ten_city <- melt(top_ten_city, id.vars = 'City')
+```
+
+This plot analyzes the top ten airports to which passengers fly to and fly in from.
+Dallas and Houston are by far the most popular destinations.
+```{r echo=FALSE, fig.align='center'}
+ggplot(top_ten_city, aes(x=City, y=value, fill=variable )) + 
+  geom_bar(stat='identity', position='dodge') +
+  labs(title="Top 10 cities for incoming and outgoing flights", 
+       y="Number of Flights",
+       x = "City",
+       fill="Type")+
+  theme(plot.title = element_text(hjust = 0.5))
+```
+
+```{r include=FALSE}
+Avg_Time_By_Carrier = abia_austin_Dep %>%
+  group_by(UniqueCarrier)  %>%  
+  summarize(Avg_Time = mean(ActualElapsedTime, na.rm = TRUE))
+
+```
+
+This plot analyzes the average time spent flying for each airline. Looks like
+JetBlue (B6) flies for more than 3 hours on average.
+```{r echo=FALSE, fig.align='center'}
+ggplot(Avg_Time_By_Carrier, aes(x=UniqueCarrier, y=Avg_Time)) + 
+  geom_bar(stat='identity') +
+  labs(title="Average Air Time for each airline", 
+       y="Avg Time",
+       x = "Airline Carrier Code")+
+  theme(plot.title = element_text(hjust = 0.5))
+```
+
+```{r include=FALSE}
+Avg_Time_By_Carrier = abia_austin_Dep %>%
+  group_by(UniqueCarrier)  %>%  
+  summarize(Avg_Time = mean(ActualElapsedTime, na.rm = TRUE))
+abia_austin_Dep=transform(abia_austin_Dep, Diff_Category=ifelse(Diff_DepTime>=0 & Diff_DepTime<10, "0-10", 
+                                         ifelse(Diff_DepTime>=10 & Diff_DepTime<20, "10-20",
+                                                ifelse(Diff_DepTime>=20 & Diff_DepTime<30, "20-30",
+                                                       ifelse(Diff_DepTime>=30, "30+",
+                                                              ifelse(Diff_DepTime<0 & Diff_DepTime>=-10, "-10-0",
+                                                                     ifelse(Diff_DepTime<-10, "-10+")))))))
+
+Diff_Dep_Time = abia_austin_Dep %>%
+  group_by(Diff_Category)  %>%  
+  summarize(Times = length(Diff_Category))
+Diff_Dep_Time=subset(Diff_Dep_Time, !is.na(Diff_Category))
+temp=Diff_Dep_Time
+temp[1,]=Diff_Dep_Time[2,]
+temp[2,]=Diff_Dep_Time[1,]
+Diff_Dep_Time=temp
+```
+
+This plot analyzes on average how often an airline deviates departure time
+from scheduled departure time. It looks like most airlines leave between 0 to 10
+minutes earlier than scheduled!
+```{r echo=FALSE, fig.align='center'}
+ggplot(Diff_Dep_Time, aes(x=reorder(Diff_Category, -Times), y=Times)) + 
+  geom_bar(stat='identity')+
+  labs(title="Actual minus Scheduled Departure Time", 
+       y="Number of Flights",
+       x = "Time Difference (Minutes)")+
+  theme(plot.title = element_text(hjust = 0.5))
+```
+
+## **Portfolio modeling**
+
+For this problem, we are analyzing five different ETFs ranging from Gold ETFs
+to Oil related ETFs.\
+
+We have chosen to go with 5 ETFs: \
+“GLD” - The Fund seeks to achieve the performance of gold bullion less the expenses of the Fund\
+
+“USO” - The Fund seeks to reflect the performance of the spot price of West Texas Intermediate light, sweet crude oil delivered to Cushing, Oklahoma by investing in a mix of Oil Futures Contracts and Other Oil Interests.\
+
+“VNQ” - The Fund seeks to provide a high level of income and moderate long-term capital appreciation by tracking the performance of a benchmark index that measures the performance of publicly traded equity REITs and other real estate-related investments.\
+
+“BNO” - BNO tracks the Brent oil spot price using near-month ICE futures contracts.\
+
+“SLV” - The Fund seeks to reflect generally the performance of the price of silver. \
+
+```{r include=FALSE}
+mystocks <- c("GLD","USO","VNQ","BNO","SLV")
+getSymbols(mystocks,from = "2014-01-01")
+
+###
+
+GLDa <- adjustOHLC(GLD)
+USOa <- adjustOHLC(USO)
+VNQa <- adjustOHLC(VNQ)
+BNOa <- adjustOHLC(BNO)
+SLVa <- adjustOHLC(SLV)
+```
+
+Simulate how volatile each ETF is. Looks like oil ETFs are the most volatile
+of the five chosen
+```{r echo=FALSE}
+plot(ClCl(GLDa),main = "GLD Price since 2014",
+     xlab = "Amount in Dollars")
+plot(ClCl(USOa),main = "USO Price since 2014",
+     xlab = "Amount in Dollars")
+plot(ClCl(VNQa),main = "VNQ Price since 2014",
+     xlab = "Amount in Dollars")
+plot(ClCl(BNOa),main = "BNO Price since 2014",
+     xlab = "Amount in Dollars")
+plot(ClCl(SLVa),main = "SLV Price since 2014",
+     xlab = "Amount in Dollars")
+
+```
+
+```{r include=FALSE}
+returns <- cbind(ClCl(GLDa),ClCl(USOa),ClCl(VNQa),ClCl(BNOa),ClCl(SLVa))
+all.r <- as.matrix(na.omit(returns))
+n <- nrow(all.r)
+```
+
+
+Portfolio 1 : Equal weights to all ETFs (i.e 20 percent to all)
+It looks like our 5% value at risk is around 9674
+```{r echo=FALSE}
+boot.portfolio1 <- c()
+set.seed(1)
+for (i in 1:5000){
+  total <- 100000
+  weights <- rep(0.2,5)
+  holdings <- total * weights
+  for (i in 1:20){
+    return.day <- resample(all.r,1,orig.ids = FALSE)
+    holdings <- holdings*(1+return.day)
+    #wealth <- c(wealth,holdings)
+  }
+  boot.portfolio1 <- c(boot.portfolio1,sum(holdings))
+}
+
+hist(boot.portfolio1,main = "Portfolio 1 Returns",
+     xlab = "Amount in Dollars")
+```
+
+```{r echo=FALSE}
+hist(boot.portfolio1 - 100000, breaks = 30,main = "Portfolio 1 profit/loss",
+     xlab = "Amount in Dollars")
+```
+```{r echo=FALSE}
+print(abs(quantile(boot.portfolio1 - 100000,prob = 0.05)))
+print(mean(boot.portfolio1))
+```
+
+Portfolio 2 : Invest 96 percent of wealth into gold and 1 percent each into 
+the remaining 4 ETFs.
+
+It looks like our 5% value at risk is around 5670
+```{r echo=FALSE}
+boot.portfolio2 <- c()
+set.seed(1)
+for (i in 1:5000){
+  total <- 100000
+  weights <- c(0.96,0.01,0.01,0.01,0.01)
+  holdings <- total * weights
+  for (i in 1:20){
+    return.day <- resample(all.r,1,orig.ids = FALSE)
+    holdings <- holdings*(1+return.day)
+    #wealth <- c(wealth,holdings)
+  }
+  boot.portfolio2 <- c(boot.portfolio2,sum(holdings))
+}
+```
+
+```{r echo=FALSE}
+hist(boot.portfolio2,main = "Portfolio 2 Returns",
+     xlab = "Amount in Dollars")
+```
+```{r echo=FALSE}
+hist(boot.portfolio2 - 100000, breaks = 30,main = "Portfolio 2 profit/loss",
+     xlab = "Amount in Dollars")
+```
+```{r echo=FALSE}
+print(abs(quantile(boot.portfolio2 - 100000,prob = 0.05)))
+print(mean(boot.portfolio2))
+
+```
+
+Portfolio 3 : Invest 60 percent of wealth into VNQ and 10 percent each into 
+the remaining 4 ETFs.
+
+It looks like our 5% value at risk is around 7695
+```{r echo=FALSE}
+boot.portfolio3 <- c()
+set.seed(1)
+for (i in 1:5000){
+  total <- 100000
+  weights <- c(0.1,0.1,0.6,0.1,0.1)
+  holdings <- total * weights
+  for (i in 1:20){
+    return.day <- resample(all.r,1,orig.ids = FALSE)
+    holdings <- holdings*(1+return.day)
+    #wealth <- c(wealth,holdings)
+  }
+  boot.portfolio3 <- c(boot.portfolio3,sum(holdings))
+}
+```
+```{r echo=FALSE}
+hist(boot.portfolio3,main = "Portfolio 3 Returns",
+     xlab = "Amount in Dollars")
+```
+```{r echo=FALSE}
+hist(boot.portfolio3 - 100000, breaks = 30,main = "Portfolio 3 profit/loss",
+     xlab = "Amount in Dollars")
+```
+```{r echo=FALSE}
+print(abs(quantile(boot.portfolio3 - 100000,prob = 0.05)))
+print(mean(boot.portfolio3))
+
+```
+
+**Report**\
+Based on our analysis, it looks like portfolio 2 performed the best where basically
+all of our investment went into gold. The portfolio had the highest returns and the 
+lowest value at risk at 5%. This is an interesting result as diversification of the 
+portfolio hurt our investments which suggests that ETFs related to Oil and Silver 
+are significantly more volatile than Gold. This also suggests that Gold is typically a safe investment to make.
