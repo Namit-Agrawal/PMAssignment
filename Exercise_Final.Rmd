@@ -580,91 +580,121 @@ scaled <- as.data.frame(scale(social[,-c(1)],center = T,scale = T))
 ID <- as.data.frame(social[,1])
 ```
 
-We first perform dimension reduction on the dataset to improve computational ability.  In addition, we can see which 
-```{r}
+We first perform dimension reduction on the dataset to improve computational ability.  In addition, we can visualize the marginal variance explained by adding another PC.  Because the elbow is not clear in this plot, we choose a value of 15 PCs to continue our analysis.
+```{r,echo = F,fig.align = "center",fig.width = 6,fig.height = 4}
 pca.social <- prcomp(scaled)
-points <- as.data.frame(c(summary(pca.social)$importance[3,]))
-points$PC <- factor(rownames(points))
-colnames(points)[1] <- "CumulativeVarianceExplained"
-points <- data.frame(points[1:10,])
-ggplot(data = points,aes(x = PC,y = CumulativeVarianceExplained)) + 
-  geom_point()
+qplot(seq_along(summary(pca.social)$importance[3,]),
+      summary(pca.social)$importance[3,], 
+      xlab = "PC",
+      ylab = "Cumulative Variance Explained")
 ```
 
 
-scaled.pca <- pca.social$x[,1:15]
-head(round(pca.social$rotation[,1:3],2))
+```{r echo = F}
+scaled.pca <- as.data.frame(pca.social$x[,1:15])
+loadings <- rownames_to_column(as.data.frame(pca.social$rotation),"Category")
+```
+
+Based on our understanding of the dataset, we can conclude which PCs are associated with separating which types of followers.  For example, in the plot below, we can see that the third PC has weights that are strongly positive for people that are interested in fitness, but not so much in computers/gaming/politics.
+```{r ,echo = FALSE,fig.align = "center",fig.width = 6,fig.height = 4}
+fit <- select(loadings,Category,PC3)
+sorted <- arrange(fit,desc(PC3))
+ggplot(sorted, aes(x=reorder(Category,PC3), y=PC3)) +
+  geom_bar(stat='identity') + coord_flip()
+```
+In contrast, our fourth PC (below) has strong negative weights for health and fitness and seems to value online gaming and sports.
+```{r}
+gamer <- select(loadings,Category,PC4)
+sorted <- arrange(gamer,desc(PC4))
+ggplot(sorted, aes(x=reorder(Category,PC4), y=PC4)) +
+  geom_bar(stat='identity') + coord_flip()
+```
+These two PCs, then would be good at separating and visualizing different types of followers in a 2-Dimensional space.
+```{r}
+scaled.pca <- as.data.frame(pca.social$x[,1:15])
+scaled.points <- select(scaled.pca,PC3,PC4)
+ggplot(scaled.points,aes(PC3,PC4)) + 
+  geom_point()
+```
+In order to determine clusters of followers in this space, we perform kmeans clustering on our points in PC space. To determine the optimal hyperparameter for clustering, we try several values of *k* and measure the best one using our within sum of squares as the metric.  
+```{r, warning=F}
+scaled <- as.data.frame(scale(social[,-c(1)],center = T,scale = T))
+mu <- attr(scale(social[,-c(1)]), "scaled:center")
+sigma <- attr(scale(social[,-c(1)]),"scaled:scale")
+```
+Based on the plot, we decided to choose $k=7$.  We can now visualize the different clusters in the 2D PC space we chose earlier.  There seems to be a clear separation between clusters - those with a higher positive value for PC3 but low positive value for PC4 are individuals who love fitness (cluster 5).  Those who (we suspect) are college students are going to be in the positive PC4 range with negative PC3 values (cluster 3).
+```{r}
+set.seed(1)
+cluster <- kmeans(scaled, 7, nstart=25)
+scaled.points$cols <- cluster$cluster
+
+qplot(PC3,PC4,data = scaled.points,color = factor(cols)) + 
+  geom_point()
+```
+A closer examination of the clusters as determined by kmeans gives us a better picture for what type of followers are within this group.
+```{r}
+clust3 <- sort((cluster$center[3,]*sigma + mu), decreasing=TRUE)
+clust5 <- sort((cluster$center[5,]*sigma + mu), decreasing=TRUE)
+kmeansDF <- as.data.frame(cbind(clust3,clust5))
+colnames(kmeansDF)<- c("Cluster_3","Cluster_5")
+kmeansDF$category =row.names(kmeansDF)
+ggplot(kmeansDF, aes(x=reorder(category,Cluster_3), y=Cluster_3)) +
+  geom_bar(stat='identity') + coord_flip()
+ggplot(kmeansDF, aes(x=reorder(category,Cluster_5), y=Cluster_5)) +
+  geom_bar(stat='identity') + coord_flip()
+```
 
 
-loadings.summary <- pca.social$rotation %>%
-  as.data.frame() %>%
-  rownames_to_column("Category")
-# spam
-spam <- loadings.summary %>%
-  select(Category,PC1) %>%
-  arrange(desc(PC1))
 
-# young
-young <- loadings.summary %>%
+
+
+young <- loadings %>%
   select(Category,PC2) %>%
   arrange(desc(PC2))
-
-# fit
-fit <- loadings.summary %>%
-  select(Category,PC3) %>%
-  arrange(desc(PC3))
-
-# college gamer
-game <- loadings.summary %>%
-  select(Category,PC4) %>%
-  arrange(desc(PC4))
-
-# college gamer
-loadings.summary %>%
-  select(Category,PC5) %>%
-  arrange(desc(PC5))
-
-# blogger
-loadings.summary %>%
-  select(Category,PC6) %>%
-  arrange(desc(PC6))
-
-# artist/travel enthusiast
-art <- loadings.summary %>%
-  select(Category,PC7) %>%
-  arrange(desc(PC7))
-
-# singles
-loadings.summary %>%
-  select(Category,PC10) %>%
-  arrange(desc(PC10))
-
-
-
-followers <- as.data.frame(pca.social$x)
-rownames(followers) <- ID$social[, 1]
-
 ggplot(young, aes(x=reorder(Category,PC2), y=PC2)) +
   geom_bar(stat='identity') + coord_flip()
-
-ggplot(fit, aes(x=reorder(Category,PC3), y=PC3)) +
-  geom_bar(stat='identity') + coord_flip()
-
-ggplot(game, aes(x=reorder(Category,PC4), y=PC4)) +
-  geom_bar(stat='identity') + coord_flip()
-
-
 
 scaled <- as.data.frame(scale(social[,-c(1)],center = T,scale = T))
 mu <- attr(scale(social[,-c(1)]), "scaled:center")
 sigma <- attr(scale(social[,-c(1)]),"scaled:scale")
 
-
-clust <- kmeanspp(scaled,k = 5,nstart = 25)
-colors <- clust$cluster
-
-subset <- pca.social$x[,c(3,4)]
-plot(subset, col = colors, pch = 16)
-x <- c("Fitness Enthusiast","College Student")
-cols <- c("black","turquiose")
-
+withinss = c()
+for(k in 2:20){
+  set.seed(1)
+  cluster_k = kmeans(scaled, k, nstart=25)
+  withinss= c(withinss, cluster_k$tot.withinss)
+}
+plot(c(2:20), withinss)
+set.seed(1)
+cluster = kmeans(scaled, 7, nstart=25)
+cluster1=as.data.frame(cluster$center[1,]*sigma + mu)
+cluster1$category=row.names(cluster1)
+sort((cluster$center[2,]*sigma + mu), decreasing=TRUE)
+sort((cluster$center[3,]*sigma + mu), decreasing=TRUE)
+sort((cluster$center[4,]*sigma + mu), decreasing=TRUE)
+sort((cluster$center[5,]*sigma + mu), decreasing=TRUE)
+sort((cluster$center[6,]*sigma + mu), decreasing=TRUE)
+sort((cluster$center[7,]*sigma + mu), decreasing=TRUE)
+kmeansDF = as.data.frame(cbind(cluster$center[1,]*sigma + mu,
+                               cluster$center[2,]*sigma + mu,
+                               cluster$center[3,]*sigma + mu,
+                               cluster$center[4,]*sigma + mu,
+                               cluster$center[5,]*sigma + mu,
+                               cluster$center[6,]*sigma + mu,
+                               cluster$center[7,]*sigma + mu))
+colnames(kmeansDF)<- c("Cluster_1","Cluster_2","Cluster_3", "Cluster_4", "Cluster_5", "Cluster_6", "Cluster_7")
+kmeansDF$category =row.names(kmeansDF)
+ggplot(kmeansDF, aes(x=reorder(category,Cluster_1), y=Cluster_1)) +
+  geom_bar(stat='identity') + coord_flip()
+ggplot(kmeansDF, aes(x=reorder(category,Cluster_2), y=Cluster_2)) +
+  geom_bar(stat='identity') + coord_flip()
+ggplot(kmeansDF, aes(x=reorder(category,Cluster_3), y=Cluster_3)) +
+  geom_bar(stat='identity') + coord_flip()
+ggplot(kmeansDF, aes(x=reorder(category,Cluster_4), y=Cluster_4)) +
+  geom_bar(stat='identity') + coord_flip()
+ggplot(kmeansDF, aes(x=reorder(category,Cluster_5), y=Cluster_5)) +
+  geom_bar(stat='identity') + coord_flip()
+ggplot(kmeansDF, aes(x=reorder(category,Cluster_6), y=Cluster_6)) +
+  geom_bar(stat='identity') + coord_flip()
+ggplot(kmeansDF, aes(x=reorder(category,Cluster_7), y=Cluster_7)) +
+  geom_bar(stat='identity') + coord_flip()
