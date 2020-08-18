@@ -677,8 +677,8 @@ Since both the training and testing data matrices are sparse, we filter out term
 Given the filtered dataset, we then convert each $i,j$ entry into a TF-IDF score using the weightTfIdf function in the "tm" package.\
 
 In addition, we keep track of which document belongs to which author by creating an additional vector (for both the test and train datasets) where the $i^{th}$ element of the list is the author of document $i$.\
-```{r ,message = FALSE,include = FALSE}
-setwd("C:/Users/timot/Documents/GitHub/PMAssignment/")
+```{r ,message = FALSE,include = FALSE, warning=FALSE}
+# setwd("C:/Users/timot/Documents/GitHub/PMAssignment/")
 library(tidyverse)
 library(tm)
 library(slam)
@@ -722,7 +722,7 @@ Below is a sample of our training dataset:
 tm::inspect(tfidf_train[1:5,1:5])
 ```
 
-```{r echo = FALSE}
+```{r echo = FALSE, warning=FALSE}
 file_list2 <- Sys.glob("ReutersC50/C50test/*")
 
 total2 <- c()
@@ -767,7 +767,7 @@ X_test <- X_test[,-scrub2]
 train.cols <- colnames(X_train)
 test.cols <- colnames(X_test)
 ```
-We chose to ignore words found in test that were not found in train - the difference in words between training and testing was relatively small.  However, it is important to note that it may have had an adverse effect on our classification accuracy.\
+Due to our filtering preference, we found that the words (features) between the training dataset and testing dataset matched up perfectly.  Because of this, no other steps were needed to fix the features between the datasets.\
 ```{r echo = F}
 match <- intersect(train.cols,test.cols)
 X_test <- X_test[,match]
@@ -776,7 +776,7 @@ X_train <- X_train[,match]
 
 **Dimension Reduction**\
 
-We then perform PCA on our training dataset to reduce its dimensionality.  To ensure the principal components between both the training and testing dataset are equivalent, we project the observations of the test set into the PC space as defined by our training dataset.  We choose the first 500 PCs in order to both capture as much variance as well as improve computational speed.
+We then perform PCA on our training dataset.  To ensure the principal components between both the training and testing dataset are equivalent, we project the observations of the test set into the PC space as defined by our training dataset.  We choose the first 500 PCs to improve computational speed.
 ```{r echo = FALSE,fig.align = "center",fig.width = 6,fig.height = 4}
 pca.x <- prcomp(X_train,scale=T)
 qplot(seq_along(summary(pca.x)$importance[3,]),summary(pca.x)$importance[3,],xlab = "PC",ylab = "Cumulative Variance Explained")
@@ -789,25 +789,25 @@ test <- predict(pca.x,newdata = X_test)[,1:500]
 
 We use the random forest and k-Nearest Neighbor algorithms to determine a model for prediction.\
 
-In random forest, we chose several hyperparameters that could balance between bias and variance, while trying to account for computational speed.  We designated a subset of 30 variables for each split, and we used roughly 900 trees.
-```{r}
+In random forest, we chose several hyperparameters that could balance between bias and variance, while trying to account for computational speed.  We designated a subset of 20 variables for each split, and we grew 500 trees.
+```{r echo = FALSE}
 train <- as.data.frame(cbind(author,train))
 test <- as.data.frame(cbind(author2,test))
 
 library(randomForest)
 
 set.seed(1)
-rf <- randomForest(as.factor(author)~.,data = train,importance = T,mtry = 30,ntree = 900)
+rf <- randomForest(as.factor(author)~.,data = train,importance = T,mtry = 30, ntree =900)
 
 preds <- predict(rf,newdata = test)
 accuracy <- mean(preds==as.factor(author))
 accuracy
 ```
-Using the algorithm, we were able to achieve a roughly 53% accuracy on our dataset.\
+Using a the algorithm, we were able to achieve a roughly 53% accuracy on our dataset.\
 
-We then fit a k-Nearest Neighbors model on our training dataset, and chose to use $k = 50$.
+We then fit a k-Nearest Neighbors model on our training dataset, and chose to use $k = 6$.
 
-```{r,fig.align = "center",fig.width = 6,fig.height = 4}
+```{r echo = FALSE,fig.align = "center",fig.width = 6,fig.height = 4}
 library(class)
 set.seed(1)
 accuracy <- c()
@@ -818,14 +818,13 @@ for (i in seq(1,50, by = 5)){
 
 qplot(seq(1,50, by = 5),accuracy,xlab = "k",geom = c("point","line"))
 ```
-In this situation, $k=2$ provided the best accuracy.  In general, our random forest model performed the best.  
+In this situation, $k=6$ provided the best accuracy.  In general, our random forest model performed the best.  
 
 **Problem 6: Association Rule Mining**\
 In this problem, we wanted to find association rules within a dataset containing baskets of grocery shoppers.  We first take the necessary data pre-processing steps to read in the data, as well as format it in a way that allows the "arules" package in R to work.  Below is a summary of the resulting object from the class "transactions" (also within the "arules" package).\
 
 In our dataset, we can see that whole milk is purchased in roughly 25% of the baskets.\
-
-```{r, echo = FALSE}
+```{r, include = FALSE}
 library(arules)
 library(arulesViz)
 grocery <- read.delim("groceries.txt",sep = "\n",header = F)
@@ -835,22 +834,30 @@ for (i in 1:length(rownames(grocery))){
   current <- strsplit(grocery[i,],split = ",")
   baskets <- c(baskets,current)
 }
+```
+
+
+```{r, echo = FALSE}
 baskets.trans <- as(baskets,"transactions")
 summary(baskets.trans)
 ```
 
 We tested several thresholds for both confidence and lift.  In general, what we were looking for were rules that had a high number of counts (in terms of the left-hand side of the rule) and high confidence as well as lift.  \
 
-Below is a small sample of our baseline list of rules.  We choose a confidence of 0.1 and a lift of 1.  We choose a max length of 3 in order to find more general rules, instead of finding rules with larger lengths that may not occur as often.  In total, there are 18597 rules.  In addition, from the graph, we can see 
-```{r echo = FALSE,fig.align = "center",fig.width = 6,fig.height = 4}
+Below is a small sample of our baseline list of rules.  We choose a confidence of 0.1 and a lift of 1.  We choose a max length of 3 in order to find more general rules, instead of finding rules with larger lengths that may not occur as often.  In total, there are 18597 rules.  
+```{r include = FALSE,fig.align = "center",fig.width = 6,fig.height = 4}
 basket.rules <- apriori(baskets.trans, parameter=list(support=.001, confidence=.1, maxlen=3))
 sub <- subset(basket.rules, subset=lift > 1)
-arules::inspect(sub)[1:20,]
+first20=arules::inspect(sub)[1:20,]
+```
+
+```{r echo=FALSE, fig.align = "center",fig.width = 6,fig.height = 4}
+arules::inspect(sub[1:20])
 plot(head(basket.rules, 20, by='lift'), method='graph')
 ```
 
-By increasing the confidence (as well as reducing the minimum support required), we can see a drastic decrease in the number of rules in our list.  These rules are generally good, because they have high count and have a good level of confidence.
 
+In addition, from the graph, we can see by increasing the confidence (as well as reducing the minimum support required), we can see a drastic decrease in the number of rules in our list.  These rules are generally good, because they have high count and have a good level of confidence.
 ```{r echo = FALSE,fig.align = "center",fig.width = 6,fig.height = 4}
 basket.rules2 <- apriori(baskets.trans, parameter=list(support=.05, confidence=.3, maxlen=3))
 sub <- subset(basket.rules2, subset=lift > 1)
@@ -882,8 +889,6 @@ We then looked for substitute items.  After reducing support and maximum length 
 basket.rules5 <- apriori(baskets.trans, parameter=list(support=.005, confidence=.01, maxlen=3))
 arules::inspect(subset(basket.rules5, subset=lift < 1)[76:77])
 ```
-
-plot(head(data, 5, by='lift'), method='graph')
 
 In general, most of the rules make sense.  Root vegetables aren't going to be the only vegetables you buy, you'll probably buy other vegetables.  If you're getting yogurt, you're going to be in the dairy section, so you'll probably pick up some milk too.  And finally, if you're going to make a sandwich, you'll probably need both white bread and ham. \
 
