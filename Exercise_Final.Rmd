@@ -776,7 +776,7 @@ X_train <- X_train[,match]
 
 **Dimension Reduction**\
 
-We then perform PCA on our training dataset.  To ensure the principal components between both the training and testing dataset are equivalent, we project the observations of the test set into the PC space as defined by our training dataset.  We choose the first 500 PCs to improve computational speed.
+We then perform PCA on our training dataset.  To ensure the principal components between both the training and testing dataset are equivalent, we project the observations of the test set into the PC space as defined by our training dataset.  We choose the first 500 PCs to improve computational speed (~85% of variance explained).
 ```{r echo = FALSE,fig.align = "center",fig.width = 6,fig.height = 4}
 pca.x <- prcomp(X_train,scale=T)
 qplot(seq_along(summary(pca.x)$importance[3,]),summary(pca.x)$importance[3,],xlab = "PC",ylab = "Cumulative Variance Explained")
@@ -789,21 +789,33 @@ test <- predict(pca.x,newdata = X_test)[,1:500]
 
 We use the random forest and k-Nearest Neighbor algorithms to determine a model for prediction.\
 
-In random forest, we chose several hyperparameters that could balance between bias and variance, while trying to account for computational speed.  We designated a subset of 20 variables for each split, and we grew 500 trees.
+We first try the random forest algorithm on our original dataset, rather than PC space.  We have 725 words, and choose 70 as the number of variables to consider for each split as well as 500 trees for computational speed. We were able to achieve a classification accuracy of approximately 58%.  *Note: we drop the feature (word) "next" from the dataset, as the random forest function throws an error when it encounters this word.*
 ```{r echo = FALSE}
-train <- as.data.frame(cbind(author,train))
-test <- as.data.frame(cbind(author2,test))
+newtrain <- as.data.frame(cbind(author,X_train))[,-170]
+newtest <- as.data.frame(cbind(author2,X_test))[,-170]
 
 library(randomForest)
 
 set.seed(1)
-rf <- randomForest(as.factor(author)~.,data = train,importance = T,mtry = 30, ntree =900)
+rf <- randomForest(factor(author)~.,data = newtrain,importance = T,mtry = 70,ntree = 500)
+preds <- predict(rf,newdata = newtest)
+accuracy <- mean(preds==as.factor(author2))
+accuracy
+```
+
+
+In random forest, we chose several hyperparameters that could balance between bias and variance, while trying to account for computational speed.  We designated a subset of 20 variables for each split, and we grew 500 trees.
+```{r echo = FALSE}
+train <- as.data.frame(cbind(author,train))
+test <- as.data.frame(cbind(author2,test))
+set.seed(1)
+rf <- randomForest(as.factor(author)~.,data = train,importance = T,mtry = 70, ntree =500)
 
 preds <- predict(rf,newdata = test)
 accuracy <- mean(preds==as.factor(author))
 accuracy
 ```
-Using a the algorithm, we were able to achieve a roughly 53% accuracy on our dataset.\
+Using the random forest algorithm on our PC space, we were able to achieve a roughly 44% accuracy on our dataset.  While it does reduce our dimensionality, it also reduces quite a bit of accuracy.\
 
 We then fit a k-Nearest Neighbors model on our training dataset, and chose to use $k = 6$.
 
@@ -818,7 +830,9 @@ for (i in seq(1,50, by = 5)){
 
 qplot(seq(1,50, by = 5),accuracy,xlab = "k",geom = c("point","line"))
 ```
-In this situation, $k=6$ provided the best accuracy.  In general, our random forest model performed the best.  
+In this situation, $k=6$ provided the best accuracy.\
+
+In general, our random forest model fit on the original dataset (not PC space) performed the best.  
 
 **Problem 6: Association Rule Mining**\
 In this problem, we wanted to find association rules within a dataset containing baskets of grocery shoppers.  We first take the necessary data pre-processing steps to read in the data, as well as format it in a way that allows the "arules" package in R to work.  Below is a summary of the resulting object from the class "transactions" (also within the "arules" package).\
