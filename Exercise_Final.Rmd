@@ -714,7 +714,7 @@ my_documents <- tm_map(my_documents, content_transformer(removeWords), stopwords
 
 DTM_train <- DocumentTermMatrix(my_documents)
 tm::inspect(DTM_train[1:5,1:5])
-DTM_train <- removeSparseTerms(DTM_train, 0.98)
+DTM_train <- removeSparseTerms(DTM_train, 0.95)
 tfidf_train = weightTfIdf(DTM_train)
 ```
 Below is a sample of our training dataset:
@@ -751,7 +751,7 @@ my_documents2 <- tm_map(my_documents2, content_transformer(removeWords), stopwor
 DTM_test <- DocumentTermMatrix(my_documents2)
 tm::inspect(DTM_test[1:5,1:5])
 
-DTM_test <- removeSparseTerms(DTM_test, 0.98)
+DTM_test <- removeSparseTerms(DTM_test, 0.95)
 tfidf_test <- weightTfIdf(DTM_test)
 ```
 We then filter words that are uninformative and appear in every document (i.e. all entries are 0).
@@ -767,7 +767,7 @@ X_test <- X_test[,-scrub2]
 train.cols <- colnames(X_train)
 test.cols <- colnames(X_test)
 ```
-Due to our filtering preference, we found that the words (features) between the training dataset and testing dataset matched up perfectly.  Because of this, no other steps were needed to fix the features between the datasets.\
+We chose to ignore words found in test that were not found in train - the difference in words between training and testing was relatively small.  However, it is important to note that it may have had an adverse effect on our classification accuracy.\
 ```{r echo = F}
 match <- intersect(train.cols,test.cols)
 X_test <- X_test[,match]
@@ -776,7 +776,7 @@ X_train <- X_train[,match]
 
 **Dimension Reduction**\
 
-We then perform PCA on our training dataset.  To ensure the principal components between both the training and testing dataset are equivalent, we project the observations of the test set into the PC space as defined by our training dataset.  We choose the first 500 PCs to improve computational speed.
+We then perform PCA on our training dataset to reduce its dimensionality.  To ensure the principal components between both the training and testing dataset are equivalent, we project the observations of the test set into the PC space as defined by our training dataset.  We choose the first 500 PCs in order to both capture as much variance as well as improve computational speed.
 ```{r echo = FALSE,fig.align = "center",fig.width = 6,fig.height = 4}
 pca.x <- prcomp(X_train,scale=T)
 qplot(seq_along(summary(pca.x)$importance[3,]),summary(pca.x)$importance[3,],xlab = "PC",ylab = "Cumulative Variance Explained")
@@ -789,25 +789,25 @@ test <- predict(pca.x,newdata = X_test)[,1:500]
 
 We use the random forest and k-Nearest Neighbor algorithms to determine a model for prediction.\
 
-In random forest, we chose several hyperparameters that could balance between bias and variance, while trying to account for computational speed.  We designated a subset of 20 variables for each split, and we grew 500 trees.
-```{r echo = FALSE}
+In random forest, we chose several hyperparameters that could balance between bias and variance, while trying to account for computational speed.  We designated a subset of 30 variables for each split, and we used roughly 900 trees.
+```{r}
 train <- as.data.frame(cbind(author,train))
 test <- as.data.frame(cbind(author2,test))
 
 library(randomForest)
 
 set.seed(1)
-rf <- randomForest(as.factor(author)~.,data = train,importance = T,mtry = 20,ntree =500)
+rf <- randomForest(as.factor(author)~.,data = train,importance = T,mtry = 30,ntree = 900)
 
 preds <- predict(rf,newdata = test)
 accuracy <- mean(preds==as.factor(author))
 accuracy
 ```
-Using a the algorithm, we were able to achieve a roughly 53% accuracy on our dataset.\
+Using the algorithm, we were able to achieve a roughly 53% accuracy on our dataset.\
 
 We then fit a k-Nearest Neighbors model on our training dataset, and chose to use $k = 50$.
 
-```{r echo = FALSE,fig.align = "center",fig.width = 6,fig.height = 4}
+```{r,fig.align = "center",fig.width = 6,fig.height = 4}
 library(class)
 set.seed(1)
 accuracy <- c()
@@ -824,6 +824,7 @@ In this situation, $k=2$ provided the best accuracy.  In general, our random for
 In this problem, we wanted to find association rules within a dataset containing baskets of grocery shoppers.  We first take the necessary data pre-processing steps to read in the data, as well as format it in a way that allows the "arules" package in R to work.  Below is a summary of the resulting object from the class "transactions" (also within the "arules" package).\
 
 In our dataset, we can see that whole milk is purchased in roughly 25% of the baskets.\
+
 ```{r, echo = FALSE}
 library(arules)
 library(arulesViz)
