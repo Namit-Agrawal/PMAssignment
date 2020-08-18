@@ -611,6 +611,7 @@ ggplot(sorted, aes(x=reorder(Category,PC4), y=PC4)) +
   geom_bar(stat='identity') + coord_flip() + 
   ylab("Category")
 ```
+It is important to note also that both PCs have pushed the category spam and uncategorized generally towards 0.  \
 These two PCs, then would be good at separating and visualizing different types of followers in a 2-Dimensional space.
 ```{r, echo = FALSE,fig.align = "center",fig.width = 6,fig.height = 4}
 scaled.pca <- as.data.frame(pca.social$x[,1:15])
@@ -660,6 +661,7 @@ ggplot(kmeansDF, aes(x=reorder(category,Cluster_5), y=Cluster_5)) +
   ylab("Category") + xlab("Cluster 5")
 ```
 
+From this graph, we can conclude that the groups that follow NutrientH20 are generally people who either love fitness and health or are college students, with possible combinations of both.  The points that lie in the middle are typically going to be uncategorized or spam, as both PCs push those towards 0.  Another interesting group is the group of points that lie in the lower left corner.  Since travel and politics are negative in both PCs, we suspect that they may just be news outlets or journalists.
 
 **Problem 5: Author Attribution**\
 
@@ -790,7 +792,7 @@ test <- predict(pca.x,newdata = X_test)[,1:500]
 We use the random forest and k-Nearest Neighbor algorithms to determine a model for prediction.\
 
 We first try the random forest algorithm on our original dataset, rather than PC space.  We have 725 words, and choose 70 as the number of variables to consider for each split as well as 500 trees for computational speed. We were able to achieve a classification accuracy of approximately 58%.  *Note: we drop the feature (word) "next" from the dataset, as the random forest function throws an error when it encounters this word.*
-```{r echo = FALSE}
+```{r echo = FALSE,message=FALSE}
 newtrain <- as.data.frame(cbind(author,X_train))[,-170]
 newtest <- as.data.frame(cbind(author2,X_test))[,-170]
 
@@ -817,9 +819,9 @@ accuracy
 ```
 Using the random forest algorithm on our PC space, we were able to achieve a roughly 44% accuracy on our dataset.  While it does reduce our dimensionality, it also reduces quite a bit of accuracy.\
 
-We then fit a k-Nearest Neighbors model on our training dataset, and chose to use $k = 6$.
+We then fit a k-Nearest Neighbors model on our training dataset.  Based on the plot below, we would choose to use $k = 1$ to maximize accuracy - however, due to the bias-variance tradeoff, this would not be an optimal choice.  A $k$ of 6 would help balance the tradeoff with a loss of accuracy.
 
-```{r echo = FALSE,fig.align = "center",fig.width = 6,fig.height = 4}
+```{r warning=FALSE,echo = FALSE,fig.align = "center",fig.width = 6,fig.height = 4}
 library(class)
 set.seed(1)
 accuracy <- c()
@@ -830,8 +832,6 @@ for (i in seq(1,50, by = 5)){
 
 qplot(seq(1,50, by = 5),accuracy,xlab = "k",geom = c("point","line"))
 ```
-In this situation, $k=6$ provided the best accuracy.\
-
 In general, our random forest model fit on the original dataset (not PC space) performed the best.  
 
 **Problem 6: Association Rule Mining**\
@@ -859,47 +859,51 @@ summary(baskets.trans)
 We tested several thresholds for both confidence and lift.  In general, what we were looking for were rules that had a high number of counts (in terms of the left-hand side of the rule) and high confidence as well as lift.  \
 
 Below is a small sample of our baseline list of rules.  We choose a confidence of 0.1 and a lift of 1.  We choose a max length of 3 in order to find more general rules, instead of finding rules with larger lengths that may not occur as often.  In total, there are 18597 rules.  
-```{r include = FALSE,fig.align = "center",fig.width = 6,fig.height = 4}
+```{r warning = FALSE,message = FALSE,include = FALSE,fig.align = "center",fig.width = 6,fig.height = 4}
 basket.rules <- apriori(baskets.trans, parameter=list(support=.001, confidence=.1, maxlen=3))
-sub <- subset(basket.rules, subset=lift > 1)
-first20=arules::inspect(sub)[1:20,]
+subs <- subset(basket.rules, subset=lift > 1)
 ```
 
 ```{r echo=FALSE, fig.align = "center",fig.width = 6,fig.height = 4}
-arules::inspect(sub[1:20])
-plot(head(basket.rules, 20, by='lift'), method='graph')
+arules::inspect(subs[1:5])
+plot(head(subs, 20, by='lift'), method='graph')
 ```
 
 
 In addition, from the graph, we can see by increasing the confidence (as well as reducing the minimum support required), we can see a drastic decrease in the number of rules in our list.  These rules are generally good, because they have high count and have a good level of confidence.
-```{r echo = FALSE,fig.align = "center",fig.width = 6,fig.height = 4}
+```{r echo = FALSE,fig.align = "center",fig.width = 6,fig.height = 4,warning = FALSE}
 basket.rules2 <- apriori(baskets.trans, parameter=list(support=.05, confidence=.3, maxlen=3))
-sub <- subset(basket.rules2, subset=lift > 1)
-arules::inspect(sub)
-plot(head(sub, 20, by='lift'), method='graph')
+subs <- subset(basket.rules2, subset=lift > 1)
+```
+
+```{r echo=FALSE, fig.align = "center",fig.width = 6,fig.height = 4}
+arules::inspect(subs)
+plot(head(subs, 20, by='lift'), method='graph')
 ```
 
 By decreasing the required minimum support again, we can achieve a slightly larger list (size 37) of rules.  However, in general, the counts for each rule is low (around 200 each rule).\
 
 Using the same rules, we can filter out the items that have a high value for lift.  In general, since lift is high, it implies that the items on either side of the rule are not independent from one another (i.e. they are complementary).  An interesting rule to note on this list is the second rule - the count is high and the confidence is good.  It also makes sense - typically, when a shopper is buying vegetables, they probably won't just stop at root vegetables.  
-```{r echo = FALSE,fig.align = "center",fig.width = 6,fig.height = 4}
+```{r message = FALSE, warning= FALSE,echo = FALSE,fig.align = "center",fig.width = 6,fig.height = 4,warning = FALSE}
 basket.rules3 <- apriori(baskets.trans, parameter=list(support=.02, confidence=.3, maxlen=3))
-sub <- subset(basket.rules3, subset=lift > 2)
-arules::inspect(sub)
-plot(head(sub, 20, by='lift'), method='graph')
+subs <- subset(basket.rules3, subset=lift > 2)
+```
 
+```{r echo=FALSE, fig.align = "center",fig.width = 6,fig.height = 4}
+arules::inspect(subs[1:5])
+plot(head(subs, 20, by='lift'), method='graph')
 ```
 
 We then reduced the minimum required support even further and increased the maximum length of each rule.  In general, most of these rules are good (if we disregard the low count).  They all have lifts greater than 2, which is indicative of their possible non-independence. 
-```{r echo = FALSE,fig.align = "center",fig.width = 6,fig.height = 4}
+```{r echo = FALSE,message = FALSE, warning = FALSE,fig.align = "center",fig.width = 6,fig.height = 4,warning = FALSE}
 basket.rules4 <- apriori(baskets.trans, parameter=list(support=.01, confidence=.3, maxlen=4))
-sub <- subset(basket.rules4, subset=lift > 2)
-arules::inspect(sub)
-plot(head(sub, 20, by='lift'), method='graph')
+subs <- subset(basket.rules4, subset=lift > 2)
+arules::inspect(subs)
+plot(head(subs, 20, by='lift'), method='graph')
 ```
 
 We then looked for substitute items.  After reducing support and maximum length slightly, we found an interesting set of rules that depicted this.  In general, we believe that it's safe to assume that most people who go shopping are not there to buy shopping bags, but rather are there to buy whole milk.\
-```{r echo = FALSE}
+```{r echo = FALSE, warning = FALSE, message = FALSE}
 basket.rules5 <- apriori(baskets.trans, parameter=list(support=.005, confidence=.01, maxlen=3))
 arules::inspect(subset(basket.rules5, subset=lift < 1)[76:77])
 ```
