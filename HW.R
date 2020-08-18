@@ -380,14 +380,19 @@ test <- as.data.frame(cbind(author2,test))
 
 # Random forest
 
+
+# we drop the word "next" because random forest throws an error for this particular
+# word
+newtrain <- as.data.frame(cbind(author,X_train))[,-170]
+newtest <- as.data.frame(cbind(author2,X_test))[,-170]
+
 library(randomForest)
 
 set.seed(1)
-rf <- randomForest(as.factor(author)~.,data = train,importance = T,mtry = 20,ntree =500)
-
-preds <- predict(rf,newdata = test)
-tab <- table(preds,as.factor(test$author))
-accuracy <- mean(preds==as.factor(author))
+rf <- randomForest(factor(author)~.,data = newtrain,importance = T,mtry = 70,ntree = 900)
+preds <- predict(rf,newdata = newtest)
+tab <- table(preds,as.factor(test$author2))
+accuracy <- mean(preds==as.factor(author2))
 accuracy
 
 
