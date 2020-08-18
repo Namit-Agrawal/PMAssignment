@@ -6,7 +6,7 @@ output:
   pdf_document: default
 ---
 Note: Much of the analysis below was inspired by various R files written by Professor James Scott.  
-# **Problem 1: Visual story telling: green buildings**
+**Problem 1: Visual story telling: green buildings**
 ```{r include=FALSE}
 library(mosaic)
 library(ggplot2)
